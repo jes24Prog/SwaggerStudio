@@ -1,0 +1,51 @@
+diff --git a/node_modules/swagger-ui-react/es/index.js b/node_modules/swagger-ui-react/es/index.js
+index 2d29486..85d1ea8 100644
+--- a/node_modules/swagger-ui-react/es/index.js
++++ b/node_modules/swagger-ui-react/es/index.js
+@@ -10,6 +10,13 @@ import { SwaggerUIBundle } from "swagger-ui-dist";
+ 
+ const SwaggerUI = (_ref) => {
+   let {
++    spec,
++    url,
++    layout,
++    onComplete,
++    requestInterceptor,
++    responseInterceptor,
++    docExpansion,
+     ...rest
+   } = _ref;
+   const [swaggerUi, setSwaggerUi] = useState(null);
+@@ -17,21 +24,20 @@ const SwaggerUI = (_ref) => {
+   useEffect(() => {
+     const ui = SwaggerUIBundle({
+       ...rest,
+-      dom_id: "#swagger-ui",
+-      spec: rest.spec,
+-      url: rest.url,
+-      layout: rest.layout,
+-      docExpansion: rest.docExpansion,
+-      onComplete: rest.onComplete,
+-      requestInterceptor: rest.requestInterceptor,
+-      responseInterceptor: rest.responseInterceptor
++      dom_id: "#swagger-ui"
+     });
+     setSwaggerUi(ui);
+   }, []);
+ 
+   useEffect(() => {
+     if (swaggerUi) {
+-      swaggerUi.specActions.updateSpec(JSON.stringify(rest.spec));
++      if (spec) {
++        swaggerUi.specActions.updateSpec(JSON.stringify(spec));
++      } else if (url) {
++        swaggerUi.specActions.download(url)
++      } else {
++        swaggerUi.specActions.updateSpec("");
++      }
+     }
+-  }, [rest.spec]);
++  }, [spec, url, swaggerUi]);
+   return /*#__PURE__*/React.createElement("div", {
+     id: "swagger-ui"
+   });
