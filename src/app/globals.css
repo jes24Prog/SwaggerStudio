@@ -4,52 +4,53 @@
 
 @layer base {
   :root {
-    --background: 210 20% 96.1%;
-    --foreground: 222.2 47.4% 11.2%;
-    --card: 210 20% 96.1%;
-    --card-foreground: 222.2 47.4% 11.2%;
-    --popover: 210 20% 96.1%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 230.8 48.3% 48.2%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 207 70% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 210 4.9% 10.9%;
+    --secondary-foreground: 210 40% 9.8%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 187.1 100% 42.2%;
+    --muted-foreground: 210 40% 45.1%;
+    --accent: 168 76% 42%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 47.4% 11.2%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
   }
+
   .dark {
-    --background: 222.2 47.4% 11.2%;
+    --background: 0 0% 13%;
     --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 11.2%;
+    --card: 0 0% 13%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 47.4% 11.2%;
+    --popover: 0 0% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 230.8 48.3% 48.2%;
+    --primary: 207 70% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 187.1 100% 42.2%;
+    --accent: 168 76% 42%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 22.5%;
+    --input: 217.2 32.6% 22.5%;
+    --ring: 207 70% 53%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -63,6 +64,70 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
+  }
+  h1,h2,h3,h4,h5,h6 {
+    @apply font-headline;
+  }
+  code {
+    @apply font-code;
   }
 }
+
+/* Custom styles for libraries */
+.swagger-ui .topbar {
+  display: none;
+}
+.swagger-ui {
+  @apply font-body;
+}
+.dark .swagger-ui .scheme-container {
+  @apply bg-background border rounded-lg;
+}
+.dark .swagger-ui .opblock .opblock-section-header {
+  @apply bg-muted;
+}
+.dark .swagger-ui .opblock-tag {
+  @apply border-b-border;
+}
+.dark .swagger-ui .opblock-tag:hover {
+  @apply bg-muted;
+}
+.dark .swagger-ui table thead tr td, .dark .swagger-ui table thead tr th {
+  @apply border-b-border;
+}
+.dark .swagger-ui .response-col_status, .dark .swagger-ui .parameter__name, .dark .swagger-ui .parameter__type, .dark .swagger-ui .responses-inner>div>div>span, .dark .swagger-ui label, .dark .swagger-ui .dialog-ux .modal-ux-header h3, .dark .swagger-ui .tab li {
+  color: hsl(var(--foreground)) !important;
+}
+.dark .swagger-ui .opblock.opblock-post { border-color: #49cc90; background: rgba(73,204,144,.1); }
+.dark .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #49cc90; }
+.dark .swagger-ui .opblock.opblock-put { border-color: #fca130; background: rgba(252,161,48,.1); }
+.dark .swagger-ui .opblock.opblock-put .opblock-summary-method { background: #fca130; }
+.dark .swagger-ui .opblock.opblock-get { border-color: #61affe; background: rgba(97,175,254,.1); }
+.dark .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #61affe; }
+.dark .swagger-ui .opblock.opblock-delete { border-color: #f93e3e; background: rgba(249,62,62,.1); }
+.dark .swagger-ui .opblock.opblock-delete .opblock-summary-method { background: #f93e3e; }
+.dark .swagger-ui .opblock.opblock-patch { border-color: #50e3c2; background: rgba(80,227,194,.1); }
+.dark .swagger-ui .opblock.opblock-patch .opblock-summary-method { background: #50e3c2; }
+.dark .swagger-ui section.models { border-color: hsl(var(--border)); background: hsl(var(--background));}
+.dark .swagger-ui .model-title, .dark .swagger-ui .model-title__text { color: hsl(var(--foreground)) !important; }
+.dark .swagger-ui .model, .dark .swagger-ui .model-example { background-color: hsl(var(--muted)); }
+.dark .swagger-ui .model .prop-type { color: hsl(var(--accent-foreground));}
+.dark .swagger-ui .model .prop-name { color: hsl(var(--primary)); }
+.dark .swagger-ui .model .prop-format { color: hsl(var(--secondary-foreground)); }
+.dark .swagger-ui .prop-enum .prop-type { color: hsl(var(--accent-foreground));}
+
+/* Redoc dark theme styles */
+.dark #redoc-container, .dark .redoc-wrap { background-color: hsl(var(--background)) !important; }
+.dark #redoc-container h1, .dark #redoc-container h2, .dark #redoc-container h3, .dark #redoc-container h4, .dark #redoc-container h5, .dark #redoc-container h6, .dark #redoc-container .redoc-wrap, .dark #redoc-container .menu-content, .dark #redoc-container .api-content, .dark #redoc-container label, .dark #redoc-container span, .dark #redoc-container p, .dark #redoc-container div, .dark #redoc-container td, .dark #redoc-container th { color: hsl(var(--foreground)) !important; }
+.dark #redoc-container .menu-content { background-color: hsl(var(--card)) !important; }
+.dark #redoc-container .api-content { background-color: hsl(var(--background)) !important; }
+.dark #redoc-container code, .dark #redoc-container pre { background-color: hsl(var(--muted)) !important; color: hsl(var(--muted-foreground)) !important; border: 1px solid hsl(var(--border));}
+.dark #redoc-container a { color: hsl(var(--primary)) !important; }
+.dark #redoc-container .http-verb { background-color: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
+.dark #redoc-container .token.string { color: hsl(var(--accent)) !important;}
+.dark #redoc-container .token.property { color: hsl(var(--primary)) !important;}
+.dark #redoc-container .token.number { color: #ae81ff !important; }
+.dark #redoc-container .right-panel, .dark #redoc-container .payload-example { background-color: hsl(var(--muted)) !important; }
+.dark #redoc-container button { background-color: hsl(var(--secondary)) !important; color: hsl(var(--secondary-foreground)) !important; }
+.dark #redoc-container input { background-color: hsl(var(--input)) !important; color: hsl(var(--foreground)) !important; border: 1px solid hsl(var(--border)) !important; }
