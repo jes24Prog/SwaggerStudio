@@ -7,7 +7,7 @@ import { AlertTriangle, BadgeCheck, FileWarning, PlusCircle, ShieldX } from "luc
 import { Button } from "../ui/button";
 import * as yaml from 'js-yaml';
 import { useToast } from "@/hooks/use-toast";
-import { get, set, cloneDeep } from 'lodash';
+import { get, set, cloneDeep, omit } from 'lodash';
 
 export function ValidationPanel() {
   const { validationErrors, missingSchemas, spec, setSpec } = useStore();
@@ -20,42 +20,54 @@ export function ValidationPanel() {
   };
 
   const addSchemaPlaceholder = (parsedSpec: any, schemaName: string, referencePath: string) => {
-    
     let newSchema: any = { type: 'object', description: `TODO: Define schema for ${schemaName}` };
 
     if (referencePath) {
-      const pathArray = referencePath.split('/').slice(1);
-      const parentPath = pathArray.slice(0, -1);
-      const parentObject = get(parsedSpec, parentPath);
-      
-      if (parentObject && parentObject.allOf) {
-        const otherParts = parentObject.allOf.filter((part: any) => part.$ref !== `#/components/schemas/${schemaName}` && part.$ref !== `#/definitions/${schemaName}`);
-        if (otherParts.length > 0) {
-            newSchema = { allOf: otherParts };
-        }
-      }
-    }
+        const pathArray = referencePath.split('/').slice(1);
+        const parentObject = get(cloneDeep(parsedSpec), pathArray);
 
+        if (parentObject) {
+            const refKeyOAS3 = `#/components/schemas/${schemaName}`;
+            const refKeyOAS2 = `#/definitions/${schemaName}`;
+
+            let otherProps: any = {};
+            
+            if (parentObject.allOf) {
+                const otherParts = parentObject.allOf.filter((part: any) => part.$ref !== refKeyOAS3 && part.$ref !== refKeyOAS2);
+                if (otherParts.length > 0) {
+                    otherProps = otherParts.reduce((acc: any, part: any) => ({ ...acc, ...part }), {});
+                }
+            }
+            
+            // Merge sibling properties, but exclude the $ref itself
+            const siblingProps = omit(parentObject, ['$ref', 'allOf']);
+            if (Object.keys(siblingProps).length > 0) {
+              otherProps = { ...otherProps, ...siblingProps };
+            }
+
+            if (Object.keys(otherProps).length > 0) {
+                newSchema = otherProps;
+            }
+        }
+    }
 
     if (parsedSpec.components && parsedSpec.components.schemas) {
-      if (!parsedSpec.components.schemas[schemaName]) {
-        parsedSpec.components.schemas[schemaName] = newSchema;
-        return true;
-      }
-    }
-    else if (parsedSpec.definitions) {
-       if (!parsedSpec.definitions[schemaName]) {
-        parsedSpec.definitions[schemaName] = newSchema;
-        return true;
-      }
-    }
-    else {
-      if (!parsedSpec.components) parsedSpec.components = {};
-      if (!parsedSpec.components.schemas) parsedSpec.components.schemas = {};
-      if (!parsedSpec.components.schemas[schemaName]) {
-        parsedSpec.components.schemas[schemaName] = newSchema;
-        return true;
-      }
+        if (!parsedSpec.components.schemas[schemaName]) {
+            set(parsedSpec, ['components', 'schemas', schemaName], newSchema);
+            return true;
+        }
+    } else if (parsedSpec.definitions) {
+        if (!parsedSpec.definitions[schemaName]) {
+            set(parsedSpec, ['definitions', schemaName], newSchema);
+            return true;
+        }
+    } else {
+        if (!parsedSpec.components) parsedSpec.components = {};
+        if (!parsedSpec.components.schemas) parsedSpec.components.schemas = {};
+        if (!parsedSpec.components.schemas[schemaName]) {
+            set(parsedSpec, ['components', 'schemas', schemaName], newSchema);
+            return true;
+        }
     }
     return false;
   }

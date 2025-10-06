@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -120,14 +121,52 @@
 /* Redoc dark theme styles */
 .dark #redoc-container, .dark .redoc-wrap { background-color: hsl(var(--background)) !important; }
 .dark #redoc-container h1, .dark #redoc-container h2, .dark #redoc-container h3, .dark #redoc-container h4, .dark #redoc-container h5, .dark #redoc-container h6, .dark #redoc-container .redoc-wrap, .dark #redoc-container .menu-content, .dark #redoc-container .api-content, .dark #redoc-container label, .dark #redoc-container span, .dark #redoc-container p, .dark #redoc-container div, .dark #redoc-container td, .dark #redoc-container th, .dark #redoc-container [class*='-description'] { color: hsl(var(--foreground)) !important; }
-.dark #redoc-container .menu-content { background-color: hsl(var(--card)) !important; }
+.dark #redoc-container .menu-content { background-color: hsl(var(--card)) !important; border-right: 1px solid hsl(var(--border));}
 .dark #redoc-container .api-content { background-color: hsl(var(--background)) !important; }
-.dark #redoc-container code, .dark #redoc-container pre { background-color: hsl(var(--muted)) !important; color: hsl(var(--muted-foreground)) !important; border: 1px solid hsl(var(--border));}
-.dark #redoc-container a { color: hsl(var(--primary)) !important; }
-.dark #redoc-container .http-verb { background-color: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
+
+/* Code blocks */
+.dark #redoc-container code[class*='language-'], .dark #redoc-container pre[class*='language-'] { background-color: hsl(var(--muted)) !important; color: hsl(var(--muted-foreground)) !important; border: 1px solid hsl(var(--border));}
 .dark #redoc-container .token.string { color: hsl(var(--accent)) !important;}
-.dark #redoc-container .token.property { color: hsl(var(--primary)) !important;}
-.dark #redoc-container .token.number { color: #ae81ff !important; }
+.dark #redoc-container .token.property, .dark #redoc-container .token.tag, .dark #redoc-container .token.constant, .dark #redoc-container .token.symbol, .dark #redoc-container .token.deleted { color: #87ddff !important; }
+.dark #redoc-container .token.number { color: #f088ff !important; }
+.dark #redoc-container .token.boolean { color: #ffab70 !important; }
+.dark #redoc-container .token.keyword { color: #ff7575 !important; }
+
+/* Links */
+.dark #redocC-container a { color: hsl(var(--primary)) !important; }
+
+/* HTTP Verbs */
+.dark #redoc-container .http-verb[class*='get'] { background-color: #61affe !important; }
+.dark #redoc-container .http-verb[class*='post'] { background-color: #49cc90 !important; }
+.dark #redoc-container .http-verb[class*='put'] { background-color: #fca130 !important; }
+.dark #redoc-container .http-verb[class*='delete'] { background-color: #f93e3e !important; }
+.dark #redoc-container .http-verb[class*='patch'] { background-color: #50e3c2 !important; }
+
+/* Panels and sections */
 .dark #redoc-container .right-panel, .dark #redoc-container .payload-example { background-color: hsl(var(--muted)) !important; }
-.dark #redoc-container button { background-color: hsl(var(--secondary)) !important; color: hsl(var(--secondary-foreground)) !important; }
+.dark #redoc-container .property-name.required:after { content: '*'; color: #ff7575; margin-left: 4px; }
+.dark #redoc-container button { background-color: hsl(var(--secondary)) !important; color: hsl(var(--secondary-foreground)) !important; border: 1px solid hsl(var(--border)) !important; }
+.dark #redoc-container button:hover { background-color: hsl(var(--muted)) !important; }
 .dark #redoc-container input { background-color: hsl(var(--input)) !important; color: hsl(var(--foreground)) !important; border: 1px solid hsl(var(--border)) !important; }
+.dark #redoc-container .menu-content .active { background-color: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
+.dark #redoc-container .menu-content li > label:hover { background-color: hsl(var(--muted)) !important; }
+
+
+/* Redoc separate scrollbar */
+#redoc-container .redoc-wrap {
+  height: calc(100vh - 4.5rem);
+  overflow: hidden;
+}
+
+#redoc-container .menu-content {
+  height: 100%;
+  overflow-y: auto !important;
+}
+
+#redoc-container .api-content,
+#redoc-container .right-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
+    

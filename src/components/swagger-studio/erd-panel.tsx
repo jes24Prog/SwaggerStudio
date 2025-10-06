@@ -1,13 +1,21 @@
 
 "use client";
 
+import * as React from "react";
 import { useStore } from "@/lib/store";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, Wand2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, Handle, Position, type Node, type Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import * as yaml from 'js-yaml';
+import { get, set } from 'lodash';
+import { useToast } from "@/hooks/use-toast";
+import { InputDialog } from "./input-dialog";
+import { formatSpec } from "@/lib/swagger-utils";
+
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -15,8 +23,16 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 300;
 const nodeHeight = 200;
 
-function SchemaNode({ data }: { data: { label: string, properties: any, isMissing?: boolean } }) {
+function SchemaNode({ data }: { data: { label: string, properties: any, isMissing?: boolean, onExtract: (path: string[], schemaName: string) => void } }) {
   const properties = data.properties || {};
+
+  const handleExtractClick = (propName: string) => {
+    // Construct the path for extraction from within the component
+    const path = data.label.split('.'); // If label is already a path
+    const finalPath = [...path, 'properties', propName];
+    data.onExtract(finalPath, `Extracted${data.label}${propName.charAt(0).toUpperCase() + propName.slice(1)}`);
+  };
+
   return (
     <Card className={data.isMissing ? "border-red-500" : ""}>
       <CardHeader className="p-2 border-b">
@@ -29,9 +45,16 @@ function SchemaNode({ data }: { data: { label: string, properties: any, isMissin
         {Object.keys(properties).length > 0 ? (
           <div className="space-y-1">
             {Object.entries(properties).map(([propName, propDetails]: [string, any]) => (
-              <div key={propName} className="flex justify-between items-center">
-                <span>{propName}</span>
-                <span className="text-muted-foreground">{propDetails.$ref ? propDetails.$ref.split('/').pop() : (propDetails.type || 'any')}{propDetails.format ? `(${propDetails.format})` : ''}</span>
+              <div key={propName} className="flex justify-between items-center group">
+                <div>
+                  <span>{propName}</span>
+                  <span className="text-muted-foreground ml-2">{propDetails.$ref ? propDetails.$ref.split('/').pop() : (propDetails.type || 'any')}{propDetails.format ? `(${propDetails.format})` : ''}</span>
+                </div>
+                {propDetails.type === 'object' && propDetails.properties && !propDetails.$ref && (
+                   <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => handleExtractClick(propName)} title={`Extract ${propName} to new schema`}>
+                     <Wand2 className="h-3 w-3" />
+                   </Button>
+                )}
               </div>
             ))}
           </div>
@@ -45,7 +68,7 @@ function SchemaNode({ data }: { data: { label: string, properties: any, isMissin
   );
 }
 
-const nodeTypes = { schema: SchemaNode };
+
 
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
@@ -54,7 +77,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   nodes.forEach((node) => {
      // Estimate node height based on properties
     const numProperties = node.data.properties ? Object.keys(node.data.properties).length : 1;
-    const estimatedHeight = 60 + numProperties * 20;
+    const estimatedHeight = 60 + numProperties * 25; // increased space per prop
     dagreGraph.setNode(node.id, { width: nodeWidth, height: Math.max(nodeHeight, estimatedHeight) });
   });
 
@@ -80,88 +103,139 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   return { nodes, edges };
 };
 
-function generateErdData(spec: any, missingSchemas: { schema: string }[]): { nodes: Node[], edges: Edge[] } {
-  const schemas = spec?.components?.schemas || spec?.definitions;
-  if (!schemas) {
-    return { nodes: [], edges: [] };
-  }
-
-  const missingSchemaSet = new Set(missingSchemas.map(s => s.schema));
-
-  const nodes: Node[] = Object.keys(schemas).map(name => ({
-    id: name,
-    type: 'schema',
-    position: { x: 0, y: 0 },
-    data: { 
-      label: name,
-      properties: schemas[name]?.properties
-    },
-     style: {
-      width: nodeWidth,
-      padding: 0,
-    }
-  }));
-
-  missingSchemaSet.forEach(name => {
-    if (!nodes.find(n => n.id === name)) {
-      nodes.push({
-        id: name,
-        type: 'schema',
-        position: { x: 0, y: 0 },
-        data: { 
-          label: name,
-          properties: {},
-          isMissing: true,
-        },
-        style: {
-          width: nodeWidth,
-          padding: 0,
-        }
-      })
-    }
-  })
-
-  const edges: Edge[] = [];
-  const refPrefixOAS3 = '#/components/schemas/';
-  const refPrefixOAS2 = '#/definitions/';
-
-  const findRefs = (obj: any, sourceName: string) => {
-    if (!obj || typeof obj !== 'object') return;
-
-    if (obj.$ref && typeof obj.$ref === 'string') {
-       let targetName: string | null = null;
-      if (obj.$ref.startsWith(refPrefixOAS3)) {
-        targetName = obj.$ref.substring(refPrefixOAS3.length);
-      } else if (obj.$ref.startsWith(refPrefixOAS2)) {
-         targetName = obj.$ref.substring(refPrefixOAS2.length);
-      }
-      
-      if (targetName) {
-        edges.push({
-          id: `e-${sourceName}-${targetName}-${Math.random()}`,
-          source: sourceName,
-          target: targetName,
-          animated: true,
-        });
-      }
-    }
-
-    for (const value of Object.values(obj)) {
-      findRefs(value, sourceName);
-    }
-  };
-
-  Object.keys(schemas).forEach(name => {
-    findRefs(schemas[name], name);
-  });
-
-  return { nodes, edges };
-}
 
 function LayoutFlow() {
-  const { parsedSpec, missingSchemas } = useStore();
+  const { spec, setSpec, parsedSpec, missingSchemas } = useStore();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { toast } = useToast();
+  const [isExtractDialogOpen, setExtractDialogOpen] = useState(false);
+  const [extractionArgs, setExtractionArgs] = useState<{ path: string[], initialName: string } | null>(null);
+
+  const handleExtractRequest = useCallback((path: string[], initialName: string) => {
+    setExtractionArgs({ path, initialName });
+    setExtractDialogOpen(true);
+  }, []);
+
+  const handleExtractSchema = async (schemaName: string) => {
+    if (!extractionArgs || !schemaName) return;
+
+    try {
+        const parsed = yaml.load(spec) as any;
+        const schemaContainerPath = parsed.components?.schemas ? 'components.schemas' : 'definitions';
+        
+        // The path now needs to be relative to the schema container
+        const fullPathToProp = [schemaContainerPath, ...extractionArgs.path];
+        const objectToExtract = get(parsed, fullPathToProp);
+        
+        if (!objectToExtract) {
+          toast({ variant: 'destructive', title: 'Extraction Failed', description: 'Could not find object to extract.' });
+          return;
+        }
+
+        // 1. Define the new schema
+        const newSchemaPath = [schemaContainerPath, schemaName];
+        set(parsed, newSchemaPath, objectToExtract);
+
+        // 2. Replace the inline object with a $ref
+        const refPath = parsed.components?.schemas ? `#/components/schemas/${schemaName}` : `#/definitions/${schemaName}`;
+        set(parsed, fullPathToProp, { $ref: refPath });
+        
+        const newSpec = yaml.dump(parsed);
+        const formatted = await formatSpec(newSpec);
+        setSpec(formatted);
+        toast({ title: 'Schema Extracted', description: `Created "${schemaName}" and updated the reference.` });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Extraction Failed', description: e.message });
+    }
+    setExtractionArgs(null);
+  };
+  
+  const nodeTypes = React.useMemo(() => ({ 
+    schema: (props: any) => <SchemaNode {...props} data={{...props.data, onExtract: handleExtractRequest }} /> 
+  }), [handleExtractRequest]);
+
+  const generateErdData = useCallback((specObj: any, missing: { schema: string }[]): { nodes: Node[], edges: Edge[] } => {
+    const schemas = specObj?.components?.schemas || specObj?.definitions;
+    if (!schemas) {
+      return { nodes: [], edges: [] };
+    }
+  
+    const missingSchemaSet = new Set(missing.map(s => s.schema));
+  
+    const nodes: Node[] = Object.keys(schemas).map(name => ({
+      id: name,
+      type: 'schema',
+      position: { x: 0, y: 0 },
+      data: { 
+        label: name,
+        properties: schemas[name]?.properties,
+      },
+       style: {
+        width: nodeWidth,
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+      }
+    }));
+  
+    missingSchemaSet.forEach(name => {
+      if (!nodes.find(n => n.id === name)) {
+        nodes.push({
+          id: name,
+          type: 'schema',
+          position: { x: 0, y: 0 },
+          data: { 
+            label: name,
+            properties: {},
+            isMissing: true,
+          },
+          style: {
+            width: nodeWidth,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+          }
+        })
+      }
+    })
+  
+    const edges: Edge[] = [];
+    const refPrefixOAS3 = '#/components/schemas/';
+    const refPrefixOAS2 = '#/definitions/';
+  
+    const findRefs = (obj: any, sourceName: string) => {
+      if (!obj || typeof obj !== 'object') return;
+  
+      if (obj.$ref && typeof obj.$ref === 'string') {
+         let targetName: string | null = null;
+        if (obj.$ref.startsWith(refPrefixOAS3)) {
+          targetName = obj.$ref.substring(refPrefixOAS3.length);
+        } else if (obj.$ref.startsWith(refPrefixOAS2)) {
+           targetName = obj.$ref.substring(refPrefixOAS2.length);
+        }
+        
+        if (targetName) {
+          edges.push({
+            id: `e-${sourceName}-${targetName}-${Math.random()}`,
+            source: sourceName,
+            target: targetName,
+            animated: true,
+          });
+        }
+      }
+  
+      for (const value of Object.values(obj)) {
+        findRefs(value, sourceName);
+      }
+    };
+  
+    Object.keys(schemas).forEach(name => {
+      findRefs(schemas[name], name);
+    });
+  
+    return { nodes, edges };
+  }, []);
 
   useEffect(() => {
     if (!parsedSpec) return;
@@ -169,7 +243,7 @@ function LayoutFlow() {
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [parsedSpec, missingSchemas, setNodes, setEdges]);
+  }, [parsedSpec, missingSchemas, setNodes, setEdges, generateErdData]);
   
   const handleNodeClick = (_: any, node: Node) => {
     if (typeof (window as any).goToMonacoLine === 'function' && !node.data.isMissing) {
@@ -179,19 +253,30 @@ function LayoutFlow() {
   };
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeClick={handleNodeClick}
-      fitView
-      nodeTypes={nodeTypes}
-    >
-      <Controls />
-      <MiniMap />
-      <Background gap={12} size={1} />
-    </ReactFlow>
+    <>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
+        fitView
+        nodeTypes={nodeTypes}
+      >
+        <Controls />
+        <MiniMap />
+        <Background gap={12} size={1} />
+      </ReactFlow>
+      <InputDialog
+        isOpen={isExtractDialogOpen}
+        onOpenChange={setExtractDialogOpen}
+        title="Extract to New Schema"
+        description="Enter a name for the new reusable schema."
+        inputLabel="Schema Name"
+        initialValue={extractionArgs?.initialName}
+        onConfirm={handleExtractSchema}
+      />
+    </>
   );
 }
 

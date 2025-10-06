@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useStore } from "@/lib/store";
@@ -70,6 +71,12 @@ export function PreviewPanel() {
                 spec={parsedSpec!}
                 options={{
                   scrollYOffset: 0,
+                  disableSearch: false,
+                  expandResponses: "all",
+                  jsonSampleExpandLevel: "all",
+                  showObjectSchemaExamples: true,
+                  hideDownloadButton: true,
+                  backToTop: true,
                   theme: {
                     colors: {
                       primary: { main: theme === 'dark' ? '#3498db' : '#3498db' },
@@ -90,3 +97,4 @@ export function PreviewPanel() {
     </div>
   );
 }
+
