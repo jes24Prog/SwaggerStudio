@@ -6,12 +6,13 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { SwaggerStudioHeader } from '@/components/swagger-studio/header';
 import { EditorPanel } from '@/components/swagger-studio/editor-panel';
 import { PreviewPanel } from '@/components/swagger-studio/preview-panel';
+import { ErdPanel } from '@/components/swagger-studio/erd-panel';
 import { useStore, Project } from '@/lib/store';
 import { Toaster } from '@/components/ui/toaster';
 import { DEFAULT_SPEC } from '@/lib/templates';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Code } from 'lucide-react';
+import { BookOpen, Code, Network } from 'lucide-react';
 
 export default function SwaggerStudioPage() {
   const { setSpec, setProjects, setCurrentProjectId, setDirty, previewType } = useStore();
@@ -48,13 +49,33 @@ export default function SwaggerStudioPage() {
     );
   }
 
+  const renderMobilePreview = () => {
+    switch(previewType) {
+      case 'erd':
+        return <ErdPanel />;
+      default:
+        return <PreviewPanel />;
+    }
+  }
+
+  const renderMobileIcon = () => {
+    switch(previewType) {
+      case 'erd':
+        return mobileView === 'editor' ? <Network /> : <Code />;
+      case 'redoc':
+         return mobileView === 'editor' ? <BookOpen /> : <Code />;
+      default:
+         return mobileView === 'editor' ? <Code /> : <Code />;
+    }
+  }
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen bg-background text-foreground font-body">
         <SwaggerStudioHeader />
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {mobileView === 'editor' && <EditorPanel />}
-          {mobileView === 'preview' && <div className="h-full overflow-auto"><PreviewPanel /></div>}
+          {mobileView === 'preview' && <div className="h-full overflow-auto">{renderMobilePreview()}</div>}
         </div>
         <div className="fixed bottom-4 right-4 z-50">
           <Button
@@ -63,7 +84,7 @@ export default function SwaggerStudioPage() {
             aria-label={mobileView === 'editor' ? 'Switch to preview' : 'Switch to editor'}
             className='rounded-full h-14 w-14 shadow-lg'
           >
-            {mobileView === 'editor' ? <BookOpen /> : <Code />}
+            {renderMobileIcon()}
           </Button>
         </div>
         <Toaster />
@@ -71,11 +92,19 @@ export default function SwaggerStudioPage() {
     );
   }
   
-  return (
-    <div className="flex flex-col h-screen bg-background text-foreground font-body">
-      <SwaggerStudioHeader />
-      <main className="flex-1 overflow-hidden border-t">
-        {previewType === 'swagger-ui' ? (
+  const renderMainPanel = () => {
+    switch (previewType) {
+      case 'erd':
+        return <ErdPanel />;
+      case 'redoc':
+        return (
+          <div className="h-full overflow-auto">
+            <PreviewPanel />
+          </div>
+        );
+      case 'swagger-ui':
+      default:
+        return (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={50} minSize={25}>
               <div className="h-full overflow-auto">
@@ -89,11 +118,15 @@ export default function SwaggerStudioPage() {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        ) : (
-          <div className="h-full overflow-auto">
-            <PreviewPanel />
-          </div>
-        )}
+        );
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-background text-foreground font-body">
+      <SwaggerStudioHeader />
+      <main className="flex-1 overflow-hidden border-t">
+        {renderMainPanel()}
       </main>
       <Toaster />
     </div>

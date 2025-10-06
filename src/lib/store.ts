@@ -11,7 +11,7 @@ export type Project = {
   updatedAt: string;
 };
 
-export type PreviewType = 'swagger-ui' | 'redoc';
+export type PreviewType = 'swagger-ui' | 'redoc' | 'erd';
 
 export type MissingSchema = {
   path: string;
@@ -32,7 +32,7 @@ export type AppState = {
   setCurrentProjectId: (id: string | null) => void;
 
   previewType: PreviewType;
-  togglePreviewType: () => void;
+  setPreviewType: (type: PreviewType) => void;
   
   validationErrors: ValidationError[];
   setValidationErrors: (errors: ValidationError[]) => void;
@@ -61,9 +61,7 @@ export const useStore = create<AppState>((set) => ({
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
 
   previewType: 'swagger-ui',
-  togglePreviewType: () => set((state) => ({
-    previewType: state.previewType === 'swagger-ui' ? 'redoc' : 'swagger-ui'
-  })),
+  setPreviewType: (type) => set({ previewType: type }),
   
   validationErrors: [],
   setValidationErrors: (errors) => set({ validationErrors: errors }),

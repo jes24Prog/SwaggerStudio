@@ -2,10 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    allowedDevOrigins: ['https://*.cloudworkstations.dev'],
-  },
-  reactStrictMode: false,
+  serverExternalPackages: ['swagger-client', 'dagre'],
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -33,6 +30,11 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
   },
 };
 

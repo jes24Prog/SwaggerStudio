@@ -1,10 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
-import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2, AlertTriangle } from "lucide-react";
-import { useStore, Project } from "@/lib/store";
+import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2, AlertTriangle, Network } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { formatSpec, downloadFile } from "@/lib/swagger-utils";
 import { DEFAULT_SPEC, PETSTORE_SPEC } from "@/lib/templates";
@@ -19,10 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState, useRef } from "react";
 import { Label } from "../ui/label";
+import { Project } from '@/lib/store';
 
 export function SwaggerStudioHeader() {
   const { theme, setTheme } = useTheme();
-  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, togglePreviewType, setDirty, isDirty, toggleValidationPanel, isValidationPanelOpen } = useStore();
+  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, setPreviewType, setDirty, isDirty, toggleValidationPanel, isValidationPanelOpen } = useStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -151,14 +152,21 @@ export function SwaggerStudioHeader() {
           <Button variant="ghost" onClick={handleFormat}><Wand2 className="mr-2 h-4 w-4"/>Format</Button>
           
           <div className="w-px h-6 bg-border mx-2" />
-
-          <Button variant={isValidationPanelOpen ? "secondary" : "ghost"} onClick={toggleValidationPanel}><AlertTriangle className="mr-2 h-4 w-4"/>Validation</Button>
+          
+          <Button variant="ghost" size="icon" onClick={() => setPreviewType('swagger-ui')} title="Swagger UI" className={previewType === 'swagger-ui' ? 'bg-muted' : ''}>
+            <Code />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setPreviewType('redoc')} title="Redoc" className={previewType === 'redoc' ? 'bg-muted' : ''}>
+            <BookOpen />
+          </Button>
+           <Button variant="ghost" size="icon" onClick={() => setPreviewType('erd')} title="ERD Diagram" className={previewType === 'erd' ? 'bg-muted' : ''}>
+            <Network />
+          </Button>
 
           <div className="w-px h-6 bg-border mx-2" />
 
-          <Button variant="ghost" size="icon" onClick={togglePreviewType} title="Toggle Preview Mode">
-            {previewType === 'swagger-ui' ? <BookOpen /> : <Code />}
-          </Button>
+          <Button variant={isValidationPanelOpen ? "secondary" : "ghost"} onClick={toggleValidationPanel} title="Toggle Validation Panel"><AlertTriangle className="h-4 w-4"/></Button>
+
           <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="Toggle Theme">
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
