@@ -13,6 +13,11 @@ export type Project = {
 
 export type PreviewType = 'swagger-ui' | 'redoc';
 
+export type MissingSchema = {
+  path: string;
+  schema: string;
+};
+
 export type AppState = {
   spec: string;
   setSpec: (spec: string) => void;
@@ -31,6 +36,9 @@ export type AppState = {
   
   validationErrors: ValidationError[];
   setValidationErrors: (errors: ValidationError[]) => void;
+
+  missingSchemas: MissingSchema[];
+  setMissingSchemas: (schemas: MissingSchema[]) => void;
   
   isDirty: boolean;
   setDirty: (isDirty: boolean) => void;
@@ -57,6 +65,9 @@ export const useStore = create<AppState>((set) => ({
   validationErrors: [],
   setValidationErrors: (errors) => set({ validationErrors: errors }),
   
+  missingSchemas: [],
+  setMissingSchemas: (schemas) => set({ missingSchemas: schemas }),
+
   isDirty: false,
   setDirty: (isDirty) => set({ isDirty }),
 }));

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { SwaggerStudioHeader } from '@/components/swagger-studio/header';
 import { EditorPanel } from '@/components/swagger-studio/editor-panel';
 import { PreviewPanel } from '@/components/swagger-studio/preview-panel';
-import { useStore, Project, PreviewType } from '@/lib/store';
+import { useStore, Project } from '@/lib/store';
 import { Toaster } from '@/components/ui/toaster';
 import { DEFAULT_SPEC } from '@/lib/templates';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { BookOpen, Code } from 'lucide-react';
 
 export default function SwaggerStudioPage() {
-  const { setSpec, setProjects, setCurrentProjectId, setDirty } = useStore();
+  const { setSpec, setProjects, setCurrentProjectId, setDirty, previewType } = useStore();
   const [isClient, setIsClient] = useState(false);
   const isMobile = useIsMobile();
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
@@ -74,15 +75,19 @@ export default function SwaggerStudioPage() {
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
       <SwaggerStudioHeader />
       <main className="flex-1 overflow-hidden border-t">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={50} minSize={25}>
-            <EditorPanel />
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={50} minSize={25}>
-            <PreviewPanel />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        {previewType === 'redoc' ? (
+          <PreviewPanel />
+        ) : (
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanel defaultSize={50} minSize={25}>
+              <EditorPanel />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50} minSize={25}>
+              <PreviewPanel />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
       </main>
       <Toaster />
     </div>

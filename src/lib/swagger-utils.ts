@@ -9,33 +9,71 @@ const validator = new OpenAPISchemaValidator({
   version: '3.1.0',
 });
 
-export async function parseAndValidate(spec: string): Promise<{ errors: any[], parsed: object | null }> {
+type MissingSchema = {
+  path: string;
+  schema: string;
+};
+
+function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<string>): MissingSchema[] {
+    if (!spec || typeof spec !== 'object') {
+        return [];
+    }
+
+    let missing: MissingSchema[] = [];
+
+    if (spec.$ref && typeof spec.$ref === 'string') {
+        const refPrefix = '#/components/schemas/';
+        if (spec.$ref.startsWith(refPrefix)) {
+            const schemaName = spec.$ref.substring(refPrefix.length);
+            if (!definedSchemas.has(schemaName)) {
+                missing.push({ path: currentPath, schema: schemaName });
+            }
+        }
+    }
+
+    for (const key in spec) {
+        if (Object.prototype.hasOwnProperty.call(spec, key)) {
+            const newPath = currentPath ? `${currentPath}.${key}` : key;
+            missing = missing.concat(findMissingSchemas(spec[key], newPath, definedSchemas));
+        }
+    }
+
+    return missing;
+}
+
+
+export async function parseAndValidate(spec: string): Promise<{ errors: any[], parsed: object | null, missingSchemas: MissingSchema[] }> {
   try {
-    const parsed = yaml.load(spec) as object;
+    const parsed = yaml.load(spec) as any;
     if (typeof parsed !== 'object' || parsed === null) {
-      return { errors: [{ message: 'Spec is not a valid object.' }], parsed: null };
+      return { errors: [{ message: 'Spec is not a valid object.' }], parsed: null, missingSchemas: [] };
     }
     const validationResult = validator.validate(parsed);
-    return { errors: validationResult.errors, parsed };
+
+    const definedSchemas = new Set(Object.keys(parsed?.components?.schemas || {}));
+    const missingSchemas = findMissingSchemas(parsed, '', definedSchemas);
+
+    return { errors: validationResult.errors, parsed, missingSchemas };
   } catch (e: any) {
-    return { errors: [{ message: e.message || 'Invalid YAML/JSON format.' }], parsed: null };
+    return { errors: [{ message: e.message || 'Invalid YAML/JSON format.' }], parsed: null, missingSchemas: [] };
   }
 }
 
 export async function formatSpec(spec: string): Promise<string> {
   try {
-    const parsed = yaml.load(spec);
-    // Formatting as YAML as it's the more common format for OpenAPI
+    // Try to format as YAML first
     return await prettier.format(spec, {
       parser: 'yaml',
       plugins: [prettierYaml],
       printWidth: 80,
     });
   } catch (error) {
-    console.error("Formatting failed:", error);
+    console.error("Formatting as YAML failed:", error);
     try {
-        // Try to format as JSON as a fallback
-        return await prettier.format(spec, {
+        // Fallback to JSON formatting
+        const parsed = yaml.load(spec);
+        const jsonString = JSON.stringify(parsed, null, 2);
+        return await prettier.format(jsonString, {
             parser: "json",
             plugins: [prettierBabel, prettierEstree],
             printWidth: 80,
