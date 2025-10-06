@@ -20,25 +20,29 @@ function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<
     }
 
     let missing: MissingSchema[] = [];
+    const refPrefixOAS3 = '#/components/schemas/';
+    const refPrefixOAS2 = '#/definitions/';
 
     if (spec.$ref && typeof spec.$ref === 'string') {
-        const refPrefix = '#/components/schemas/';
-        if (spec.$ref.startsWith(refPrefix)) {
-            const schemaName = spec.$ref.substring(refPrefix.length);
-            if (!definedSchemas.has(schemaName)) {
-                missing.push({ path: currentPath.replace(/\.\$ref$/, '').replace(/^\./, ''), schema: schemaName });
-            }
+        let schemaName: string | null = null;
+        if (spec.$ref.startsWith(refPrefixOAS3)) {
+            schemaName = spec.$ref.substring(refPrefixOAS3.length);
+        } else if (spec.$ref.startsWith(refPrefixOAS2)) {
+            schemaName = spec.$ref.substring(refPrefixOAS2.length);
+        }
+        
+        if (schemaName && !definedSchemas.has(schemaName)) {
+            missing.push({ path: currentPath.replace(/.?\$ref$/, ''), schema: schemaName });
         }
     }
 
     for (const key in spec) {
         if (Object.prototype.hasOwnProperty.call(spec, key)) {
-            // Sanitize key to handle cases with special characters, though less common in paths
-            const newPath = currentPath ? `${currentPath}.${key}` : key;
+            const newPath = currentPath ? `${currentPath}/${key}` : key;
             missing = missing.concat(findMissingSchemas(spec[key], newPath, definedSchemas));
         }
     }
-
+    
     // Remove duplicates by creating a unique key for each missing schema
     const uniqueMissing = new Map<string, MissingSchema>();
     missing.forEach(item => {
@@ -51,6 +55,7 @@ function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<
     return Array.from(uniqueMissing.values());
 }
 
+
 export async function parseAndValidate(spec: string): Promise<{ errors: any[], parsed: object | null, missingSchemas: MissingSchema[] }> {
   try {
     const parsed = yaml.load(spec) as any;
@@ -59,7 +64,7 @@ export async function parseAndValidate(spec: string): Promise<{ errors: any[], p
     }
     const validationResult = validator.validate(parsed);
 
-    const definedSchemas = new Set(Object.keys(parsed?.components?.schemas || {}));
+    const definedSchemas = new Set(Object.keys(parsed?.components?.schemas || parsed?.definitions || {}));
     const missingSchemas = findMissingSchemas(parsed, '', definedSchemas);
 
     return { errors: validationResult.errors, parsed, missingSchemas };

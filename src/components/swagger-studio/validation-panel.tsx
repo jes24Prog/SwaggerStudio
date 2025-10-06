@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useStore } from "@/lib/store";
@@ -6,6 +7,7 @@ import { AlertTriangle, BadgeCheck, FileWarning, PlusCircle, ShieldX } from "luc
 import { Button } from "../ui/button";
 import * as yaml from 'js-yaml';
 import { useToast } from "@/hooks/use-toast";
+import { get, set, cloneDeep } from 'lodash';
 
 export function ValidationPanel() {
   const { validationErrors, missingSchemas, spec, setSpec } = useStore();
@@ -17,7 +19,48 @@ export function ValidationPanel() {
     }
   };
 
-  const handleAddPlaceholder = (schemaName: string) => {
+  const addSchemaPlaceholder = (parsedSpec: any, schemaName: string, referencePath: string) => {
+    
+    let newSchema: any = { type: 'object', description: `TODO: Define schema for ${schemaName}` };
+
+    if (referencePath) {
+      const pathArray = referencePath.split('/').slice(1);
+      const parentPath = pathArray.slice(0, -1);
+      const parentObject = get(parsedSpec, parentPath);
+      
+      if (parentObject && parentObject.allOf) {
+        const otherParts = parentObject.allOf.filter((part: any) => part.$ref !== `#/components/schemas/${schemaName}` && part.$ref !== `#/definitions/${schemaName}`);
+        if (otherParts.length > 0) {
+            newSchema = { allOf: otherParts };
+        }
+      }
+    }
+
+
+    if (parsedSpec.components && parsedSpec.components.schemas) {
+      if (!parsedSpec.components.schemas[schemaName]) {
+        parsedSpec.components.schemas[schemaName] = newSchema;
+        return true;
+      }
+    }
+    else if (parsedSpec.definitions) {
+       if (!parsedSpec.definitions[schemaName]) {
+        parsedSpec.definitions[schemaName] = newSchema;
+        return true;
+      }
+    }
+    else {
+      if (!parsedSpec.components) parsedSpec.components = {};
+      if (!parsedSpec.components.schemas) parsedSpec.components.schemas = {};
+      if (!parsedSpec.components.schemas[schemaName]) {
+        parsedSpec.components.schemas[schemaName] = newSchema;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const handleAddPlaceholder = (schema: { schema: string; path: string; }) => {
     try {
       let parsedSpec = yaml.load(spec) as any;
       if (typeof parsedSpec !== 'object' || parsedSpec === null) {
@@ -25,29 +68,14 @@ export function ValidationPanel() {
         return;
       }
 
-      if (!parsedSpec.components) {
-        parsedSpec.components = {};
-      }
-      if (!parsedSpec.components.schemas) {
-        parsedSpec.components.schemas = {};
-      }
-
-      if (parsedSpec.components.schemas[schemaName]) {
-         toast({ title: "Info", description: `Schema "${schemaName}" already exists.` });
-         return;
+      if (addSchemaPlaceholder(parsedSpec, schema.schema, schema.path)) {
+        const newSpec = yaml.dump(parsedSpec);
+        setSpec(newSpec);
+        toast({ title: "Schema Added", description: `Placeholder for "${schema.schema}" has been added.` });
+      } else {
+        toast({ title: "Info", description: `Schema "${schema.schema}" already exists.` });
       }
 
-      parsedSpec.components.schemas[schemaName] = {
-        type: 'object',
-        properties: {
-          id: { type: 'string', description: `TODO: Define properties for ${schemaName}` }
-        },
-        description: `TODO: Define schema for ${schemaName}`
-      };
-      
-      const newSpec = yaml.dump(parsedSpec);
-      setSpec(newSpec);
-      toast({ title: "Schema Added", description: `Placeholder for "${schemaName}" has been added.` });
     } catch (e: any) {
        toast({ variant: "destructive", title: "Error", description: `Failed to add placeholder: ${e.message}` });
     }
@@ -61,16 +89,9 @@ export function ValidationPanel() {
         return;
       }
 
-      if (!parsedSpec.components) parsedSpec.components = {};
-      if (!parsedSpec.components.schemas) parsedSpec.components.schemas = {};
-
       let addedCount = 0;
-      missingSchemas.forEach(({ schema }) => {
-        if (!parsedSpec.components.schemas[schema]) {
-          parsedSpec.components.schemas[schema] = {
-            type: 'object',
-            description: `TODO: Define schema for ${schema}`,
-          };
+      missingSchemas.forEach((schema) => {
+        if (addSchemaPlaceholder(parsedSpec, schema.schema, schema.path)) {
           addedCount++;
         }
       });
@@ -140,7 +161,7 @@ export function ValidationPanel() {
                     </p>
                     <p className="pl-4">Referenced in: <span className="text-muted-foreground">{schema.path}</span></p>
                    </div>
-                   <Button size="sm" variant="ghost" className="mt-1" onClick={() => handleAddPlaceholder(schema.schema)}>
+                   <Button size="sm" variant="ghost" className="mt-1" onClick={() => handleAddPlaceholder(schema)}>
                      <PlusCircle className="mr-2 h-4 w-4" />
                      Add placeholder for `{schema.schema}`
                    </Button>
