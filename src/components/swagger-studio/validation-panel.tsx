@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, BadgeCheck, ShieldAlert, ShieldX, FileWarning, PlusCircle } from "lucide-react";
+import { AlertTriangle, BadgeCheck, FileWarning, PlusCircle, ShieldX } from "lucide-react";
 import { Button } from "../ui/button";
 import * as yaml from 'js-yaml';
 import { useToast } from "@/hooks/use-toast";
@@ -52,6 +52,40 @@ export function ValidationPanel() {
        toast({ variant: "destructive", title: "Error", description: `Failed to add placeholder: ${e.message}` });
     }
   };
+  
+  const handleAddAllPlaceholders = () => {
+    try {
+      let parsedSpec = yaml.load(spec) as any;
+      if (typeof parsedSpec !== 'object' || parsedSpec === null) {
+        toast({ variant: "destructive", title: "Error", description: "Could not parse the spec." });
+        return;
+      }
+
+      if (!parsedSpec.components) parsedSpec.components = {};
+      if (!parsedSpec.components.schemas) parsedSpec.components.schemas = {};
+
+      let addedCount = 0;
+      missingSchemas.forEach(({ schema }) => {
+        if (!parsedSpec.components.schemas[schema]) {
+          parsedSpec.components.schemas[schema] = {
+            type: 'object',
+            description: `TODO: Define schema for ${schema}`,
+          };
+          addedCount++;
+        }
+      });
+      
+      if (addedCount > 0) {
+        const newSpec = yaml.dump(parsedSpec);
+        setSpec(newSpec);
+        toast({ title: "Placeholders Added", description: `${addedCount} missing schema placeholder(s) have been added.` });
+      } else {
+        toast({ title: "No Action Needed", description: "All missing schemas already exist or there are none to add." });
+      }
+    } catch (e: any) {
+       toast({ variant: "destructive", title: "Error", description: `Failed to add placeholders: ${e.message}` });
+    }
+  };
 
   const totalIssues = validationErrors.length + missingSchemas.length;
 
@@ -83,15 +117,23 @@ export function ValidationPanel() {
               {validationErrors.map((error, index) => (
                 <div key={`err-${index}`} onClick={() => handleGoToLine(error.instancePath)} className="p-2 border-b border-dashed hover:bg-muted/50 cursor-pointer">
                   <p>
-                    <span className="font-semibold text-destructive mr-2">{error.keyword.toUpperCase()}:</span>
+                    <span className="font-semibold text-destructive mr-2">SCHEMA ERROR:</span>
                     <span className="text-muted-foreground">{error.instancePath || '/'}</span>
                   </p>
                   <p className="pl-4">{error.message}</p>
                 </div>
               ))}
+              {missingSchemas.length > 0 && (
+                <div className="p-2 border-b border-dashed">
+                  <Button size="sm" variant="outline" className="w-full" onClick={handleAddAllPlaceholders}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add All Missing Schema Placeholders
+                  </Button>
+                </div>
+              )}
               {missingSchemas.map((schema, index) => (
                  <div key={`missing-${index}`} className="p-2 border-b border-dashed hover:bg-muted/50">
-                   <div onClick={() => handleGoToLine(schema.path.replace(/\./g, '/'))} className="cursor-pointer">
+                   <div onClick={() => handleGoToLine(schema.path)} className="cursor-pointer">
                     <p>
                       <span className="font-semibold text-yellow-500 mr-2">MISSING SCHEMA:</span>
                       <span className="text-muted-foreground">{schema.schema}</span>
@@ -100,7 +142,7 @@ export function ValidationPanel() {
                    </div>
                    <Button size="sm" variant="ghost" className="mt-1" onClick={() => handleAddPlaceholder(schema.schema)}>
                      <PlusCircle className="mr-2 h-4 w-4" />
-                     Add placeholder schema
+                     Add placeholder for `{schema.schema}`
                    </Button>
                 </div>
               ))}

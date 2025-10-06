@@ -36,7 +36,7 @@ export function PreviewPanel() {
             <AlertTriangle className="mx-auto h-12 w-12 text-destructive/50 mb-4" />
             <h3 className="text-lg font-semibold text-foreground">Invalid or Empty Spec</h3>
             <p>The OpenAPI specification is either empty or contains errors that prevent rendering.</p>
-            <p>Please check the validation panel below the editor.</p>
+            <p>Please check the validation panel for details.</p>
           </div>
         </div>
       ) : (
@@ -46,13 +46,13 @@ export function PreviewPanel() {
               <FileWarning className="h-4 w-4" />
               <AlertTitle>Missing Schema Definitions</AlertTitle>
               <AlertDescription>
-                Your specification references schemas that are not defined. Check the validation panel for details.
-                <ul>
-                  {missingSchemas.slice(0, 3).map(s => (
-                    <li key={s.path}>- <strong>{s.schema}</strong></li>
+                Your specification references schemas that are not defined. Check the validation panel to add placeholders.
+                <ul className="mt-2 list-disc pl-5">
+                  {missingSchemas.slice(0, 5).map(s => (
+                    <li key={s.path}>- Model <strong>`{s.schema}`</strong> is referenced but not defined.</li>
                   ))}
-                   {missingSchemas.length > 3 && (
-                    <li>- and {missingSchemas.length - 3} more...</li>
+                   {missingSchemas.length > 5 && (
+                    <li>- and {missingSchemas.length - 5} more...</li>
                   )}
                 </ul>
               </AlertDescription>

@@ -26,26 +26,30 @@ function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<
         if (spec.$ref.startsWith(refPrefix)) {
             const schemaName = spec.$ref.substring(refPrefix.length);
             if (!definedSchemas.has(schemaName)) {
-                missing.push({ path: currentPath.replace(/\.\$ref$/, ''), schema: schemaName });
+                missing.push({ path: currentPath.replace(/\.\$ref$/, '').replace(/^\./, ''), schema: schemaName });
             }
         }
     }
 
     for (const key in spec) {
         if (Object.prototype.hasOwnProperty.call(spec, key)) {
+            // Sanitize key to handle cases with special characters, though less common in paths
             const newPath = currentPath ? `${currentPath}.${key}` : key;
             missing = missing.concat(findMissingSchemas(spec[key], newPath, definedSchemas));
         }
     }
 
-    // Remove duplicates
-    return missing.filter((item, index, self) => 
-        index === self.findIndex((t) => (
-            t.path === item.path && t.schema === item.schema
-        ))
-    );
-}
+    // Remove duplicates by creating a unique key for each missing schema
+    const uniqueMissing = new Map<string, MissingSchema>();
+    missing.forEach(item => {
+        const uniqueKey = `${item.path}-${item.schema}`;
+        if (!uniqueMissing.has(uniqueKey)) {
+            uniqueMissing.set(uniqueKey, item);
+        }
+    });
 
+    return Array.from(uniqueMissing.values());
+}
 
 export async function parseAndValidate(spec: string): Promise<{ errors: any[], parsed: object | null, missingSchemas: MissingSchema[] }> {
   try {
