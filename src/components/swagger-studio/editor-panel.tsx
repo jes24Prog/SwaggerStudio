@@ -11,7 +11,7 @@ import { UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function EditorPanel() {
-  const { setSpec } = useStore();
+  const { setSpec, isValidationPanelOpen } = useStore();
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -40,24 +40,35 @@ export function EditorPanel() {
   return (
     <div {...getRootProps()} className={cn("h-full w-full flex flex-col outline-none", isDragActive ? "bg-accent/20" : "")}>
       <input {...getInputProps()} />
-
-      <ResizablePanelGroup direction="vertical">
-        <ResizablePanel defaultSize={80} minSize={30}>
-          <div className="relative h-full">
-            <EditorComponent />
-            {isDragActive && (
-              <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center pointer-events-none z-10">
-                <UploadCloud className="w-16 h-16 text-primary mb-4" />
-                <p className="text-xl font-semibold">Drop file to upload</p>
-              </div>
-            )}
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
-          <ValidationPanel />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      {isValidationPanelOpen ? (
+        <ResizablePanelGroup direction="vertical">
+          <ResizablePanel defaultSize={80} minSize={30}>
+            <div className="relative h-full">
+              <EditorComponent />
+              {isDragActive && (
+                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center pointer-events-none z-10">
+                  <UploadCloud className="w-16 h-16 text-primary mb-4" />
+                  <p className="text-xl font-semibold">Drop file to upload</p>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+            <ValidationPanel />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <div className="relative h-full">
+          <EditorComponent />
+          {isDragActive && (
+            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center pointer-events-none z-10">
+              <UploadCloud className="w-16 h-16 text-primary mb-4" />
+              <p className="text-xl font-semibold">Drop file to upload</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

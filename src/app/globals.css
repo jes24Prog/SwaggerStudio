@@ -119,7 +119,7 @@
 
 /* Redoc dark theme styles */
 .dark #redoc-container, .dark .redoc-wrap { background-color: hsl(var(--background)) !important; }
-.dark #redoc-container h1, .dark #redoc-container h2, .dark #redoc-container h3, .dark #redoc-container h4, .dark #redoc-container h5, .dark #redoc-container h6, .dark #redoc-container .redoc-wrap, .dark #redoc-container .menu-content, .dark #redoc-container .api-content, .dark #redoc-container label, .dark #redoc-container span, .dark #redoc-container p, .dark #redoc-container div, .dark #redoc-container td, .dark #redoc-container th { color: hsl(var(--foreground)) !important; }
+.dark #redoc-container h1, .dark #redoc-container h2, .dark #redoc-container h3, .dark #redoc-container h4, .dark #redoc-container h5, .dark #redoc-container h6, .dark #redoc-container .redoc-wrap, .dark #redoc-container .menu-content, .dark #redoc-container .api-content, .dark #redoc-container label, .dark #redoc-container span, .dark #redoc-container p, .dark #redoc-container div, .dark #redoc-container td, .dark #redoc-container th, .dark #redoc-container [class*='-description'] { color: hsl(var(--foreground)) !important; }
 .dark #redoc-container .menu-content { background-color: hsl(var(--card)) !important; }
 .dark #redoc-container .api-content { background-color: hsl(var(--background)) !important; }
 .dark #redoc-container code, .dark #redoc-container pre { background-color: hsl(var(--muted)) !important; color: hsl(var(--muted-foreground)) !important; border: 1px solid hsl(var(--border));}

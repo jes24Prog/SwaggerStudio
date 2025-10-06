@@ -26,7 +26,7 @@ function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<
         if (spec.$ref.startsWith(refPrefix)) {
             const schemaName = spec.$ref.substring(refPrefix.length);
             if (!definedSchemas.has(schemaName)) {
-                missing.push({ path: currentPath, schema: schemaName });
+                missing.push({ path: currentPath.replace(/\.\$ref$/, ''), schema: schemaName });
             }
         }
     }
@@ -38,7 +38,12 @@ function findMissingSchemas(spec: any, currentPath: string, definedSchemas: Set<
         }
     }
 
-    return missing;
+    // Remove duplicates
+    return missing.filter((item, index, self) => 
+        index === self.findIndex((t) => (
+            t.path === item.path && t.schema === item.schema
+        ))
+    );
 }
 
 

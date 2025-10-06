@@ -70,23 +70,29 @@ export default function SwaggerStudioPage() {
       </div>
     );
   }
-
+  
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
       <SwaggerStudioHeader />
       <main className="flex-1 overflow-hidden border-t">
-        {previewType === 'redoc' ? (
-          <PreviewPanel />
-        ) : (
+        {previewType === 'swagger-ui' ? (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={50} minSize={25}>
-              <EditorPanel />
+              <div className="h-full overflow-auto">
+                <EditorPanel />
+              </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={25}>
-              <PreviewPanel />
+              <div className="h-full overflow-auto">
+                <PreviewPanel />
+              </div>
             </ResizablePanel>
           </ResizablePanelGroup>
+        ) : (
+          <div className="h-full overflow-auto">
+            <PreviewPanel />
+          </div>
         )}
       </main>
       <Toaster />

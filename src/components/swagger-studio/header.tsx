@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
-import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2 } from "lucide-react";
+import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2, AlertTriangle } from "lucide-react";
 import { useStore, Project } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { formatSpec, downloadFile } from "@/lib/swagger-utils";
@@ -22,7 +22,7 @@ import { Label } from "../ui/label";
 
 export function SwaggerStudioHeader() {
   const { theme, setTheme } = useTheme();
-  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, togglePreviewType, setDirty, isDirty } = useStore();
+  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, togglePreviewType, setDirty, isDirty, toggleValidationPanel, isValidationPanelOpen } = useStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,6 +150,10 @@ export function SwaggerStudioHeader() {
 
           <Button variant="ghost" onClick={handleFormat}><Wand2 className="mr-2 h-4 w-4"/>Format</Button>
           
+          <div className="w-px h-6 bg-border mx-2" />
+
+          <Button variant={isValidationPanelOpen ? "secondary" : "ghost"} onClick={toggleValidationPanel}><AlertTriangle className="mr-2 h-4 w-4"/>Validation</Button>
+
           <div className="w-px h-6 bg-border mx-2" />
 
           <Button variant="ghost" size="icon" onClick={togglePreviewType} title="Toggle Preview Mode">

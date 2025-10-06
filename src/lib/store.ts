@@ -42,6 +42,9 @@ export type AppState = {
   
   isDirty: boolean;
   setDirty: (isDirty: boolean) => void;
+
+  isValidationPanelOpen: boolean;
+  toggleValidationPanel: () => void;
 };
 
 export const useStore = create<AppState>((set) => ({
@@ -70,4 +73,7 @@ export const useStore = create<AppState>((set) => ({
 
   isDirty: false,
   setDirty: (isDirty) => set({ isDirty }),
+
+  isValidationPanelOpen: false,
+  toggleValidationPanel: () => set((state) => ({ isValidationPanelOpen: !state.isValidationPanelOpen })),
 }));
