@@ -25,30 +25,27 @@ export default function SwaggerStudioPage() {
 
   useEffect(() => {
     setIsClient(true);
-    // Load projects from localStorage
-    const savedProjects = localStorage.getItem('swagger-studio-projects');
-    const savedFormat = localStorage.getItem('swagger-studio-format') as EditorFormat | null;
-    const savedNotes = localStorage.getItem('swagger-studio-notes');
-
-    if (savedFormat) {
-      setEditorFormat(savedFormat);
-    }
     
+    const savedFormat = localStorage.getItem('swagger-studio-format') as EditorFormat | null || 'yaml';
+    setEditorFormat(savedFormat);
+
+    let initialSpec = DEFAULT_SPEC;
+    
+    const savedProjects = localStorage.getItem('swagger-studio-projects');
     if (savedProjects) {
       const projects: Project[] = JSON.parse(savedProjects);
       setProjects(projects);
       const lastOpenedId = localStorage.getItem('swagger-studio-last-opened');
       const projectToLoad = projects.find(p => p.id === lastOpenedId) || (projects.length > 0 ? projects[0] : null);
       if (projectToLoad) {
-        convertSpec(projectToLoad.content, savedFormat || 'yaml').then(content => setSpec(content));
+        initialSpec = projectToLoad.content;
         setCurrentProjectId(projectToLoad.id);
-      } else {
-        convertSpec(DEFAULT_SPEC, savedFormat || 'yaml').then(content => setSpec(content));
       }
-    } else {
-      convertSpec(DEFAULT_SPEC, savedFormat || 'yaml').then(content => setSpec(content));
     }
+    
+    setSpec(convertSpec(initialSpec, savedFormat));
 
+    const savedNotes = localStorage.getItem('swagger-studio-notes');
     if (savedNotes) {
       const notes: Notes = JSON.parse(savedNotes);
       setNotes(notes);

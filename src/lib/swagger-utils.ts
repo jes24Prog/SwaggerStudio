@@ -133,26 +133,22 @@ export function downloadFile(content: string, filename: string, type: 'yaml' | '
   URL.revokeObjectURL(url);
 }
 
-export async function convertSpec(spec: string, targetFormat: EditorFormat): Promise<string> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try {
-        const parsed = yaml.load(spec);
-        if (typeof parsed !== 'object' || parsed === null) {
-          // Not a valid object, return as-is
-          resolve(spec);
-          return;
-        }
-
-        if (targetFormat === 'json') {
-          resolve(JSON.stringify(parsed, null, 2));
-        } else {
-          resolve(yaml.dump(parsed));
-        }
-      } catch (e: any) {
-        console.error("Conversion error:", e);
-        reject(new Error("Failed to convert the specification. The content may be invalid."));
+export function convertSpec(spec: string, targetFormat: EditorFormat): string {
+    try {
+      const parsed = yaml.load(spec);
+      if (typeof parsed !== 'object' || parsed === null) {
+        // Not a valid object, return as-is
+        return spec;
       }
-    }, 10); // Use a small timeout to unblock the UI thread
-  });
+
+      if (targetFormat === 'json') {
+        return JSON.stringify(parsed, null, 2);
+      } else {
+        return yaml.dump(parsed);
+      }
+    } catch (e: any) {
+      console.error("Conversion error:", e);
+      // If conversion fails, return original spec to avoid breaking the editor
+      return spec;
+    }
 }
