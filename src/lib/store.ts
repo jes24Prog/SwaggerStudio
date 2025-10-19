@@ -1,6 +1,8 @@
+
 import { create } from 'zustand';
 import { OpenAPIV3 } from 'openapi-types';
 import { ValidationError } from 'openapi-schema-validator';
+import { EditorFormat } from './swagger-utils';
 
 // Types
 export type Project = {
@@ -11,11 +13,15 @@ export type Project = {
   updatedAt: string;
 };
 
-export type PreviewType = 'swagger-ui' | 'redoc' | 'erd';
+export type PreviewType = 'swagger-ui' | 'redoc' | 'erd' | 'compare' | 'excel';
 
 export type MissingSchema = {
   path: string;
   schema: string;
+};
+
+export type Notes = {
+  [key: string]: string;
 };
 
 export type AppState = {
@@ -45,6 +51,19 @@ export type AppState = {
 
   isValidationPanelOpen: boolean;
   toggleValidationPanel: () => void;
+
+  editorFormat: EditorFormat;
+  setEditorFormat: (format: EditorFormat) => void;
+
+  isNotesPanelOpen: boolean;
+  toggleNotesPanel: () => void;
+
+  notes: Notes;
+  setNotes: (notes: Notes) => void;
+  updateNote: (key: string, content: string) => void;
+
+  activeNoteKey: string;
+  setActiveNoteKey: (key: string) => void;
 };
 
 export const useStore = create<AppState>((set) => ({
@@ -74,4 +93,21 @@ export const useStore = create<AppState>((set) => ({
 
   isValidationPanelOpen: false,
   toggleValidationPanel: () => set((state) => ({ isValidationPanelOpen: !state.isValidationPanelOpen })),
+
+  editorFormat: 'yaml',
+  setEditorFormat: (format) => set({ editorFormat: format }),
+
+  isNotesPanelOpen: false,
+  toggleNotesPanel: () => set((state) => ({ isNotesPanelOpen: !state.isNotesPanelOpen })),
+
+  notes: { global: 'Welcome to your notes panel!' },
+  setNotes: (notes) => set({ notes }),
+  updateNote: (key, content) => set((state) => {
+    const newNotes = { ...state.notes, [key]: content };
+    localStorage.setItem('swagger-studio-notes', JSON.stringify(newNotes));
+    return { notes: newNotes };
+  }),
+
+  activeNoteKey: 'global',
+  setActiveNoteKey: (key) => set({ activeNoteKey: key }),
 }));

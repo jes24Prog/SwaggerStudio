@@ -1,3 +1,4 @@
+
 import OpenAPISchemaValidator from 'openapi-schema-validator';
 import * as yaml from 'js-yaml';
 import prettier from 'prettier/standalone';
@@ -8,6 +9,8 @@ import * as prettierBabel from "prettier/plugins/babel";
 const validator = new OpenAPISchemaValidator({
   version: '3.1.0',
 });
+
+export type EditorFormat = 'yaml' | 'json';
 
 type MissingSchema = {
   path: string;
@@ -73,27 +76,29 @@ export async function parseAndValidate(spec: string): Promise<{ errors: any[], p
   }
 }
 
-export async function formatSpec(spec: string): Promise<string> {
+export async function formatSpec(spec: string, format: EditorFormat = 'yaml'): Promise<string> {
   try {
-    // Try to format as YAML first
+    const parser = format === 'yaml' ? 'yaml' : 'json-stringify';
+    const plugins = format === 'yaml' ? [prettierYaml] : [prettierBabel, prettierEstree];
+    
     return await prettier.format(spec, {
-      parser: 'yaml',
-      plugins: [prettierYaml],
+      parser,
+      plugins,
       printWidth: 80,
     });
   } catch (error) {
-    console.error("Formatting as YAML failed:", error);
+    console.error(`Formatting as ${format} failed:`, error);
+    // Try to convert first, then format. This can fix some issues.
     try {
-        // Fallback to JSON formatting
         const parsed = yaml.load(spec);
-        const jsonString = JSON.stringify(parsed, null, 2);
-        return await prettier.format(jsonString, {
-            parser: "json",
-            plugins: [prettierBabel, prettierEstree],
+        const content = format === 'yaml' ? yaml.dump(parsed) : JSON.stringify(parsed);
+         return await prettier.format(content, {
+            parser,
+            plugins,
             printWidth: 80,
         });
-    } catch(jsonError) {
-        throw new Error("Could not format content. It might be invalid YAML or JSON.");
+    } catch (e) {
+      throw new Error(`Could not format content. It might be invalid ${format.toUpperCase()}.`);
     }
   }
 }
@@ -101,17 +106,21 @@ export async function formatSpec(spec: string): Promise<string> {
 export function downloadFile(content: string, filename: string, type: 'yaml' | 'json') {
   let blob;
   let finalContent = content;
-  if (type === 'json') {
-    try {
-      const parsed = yaml.load(content);
+
+  try {
+    const parsed = yaml.load(content);
+    if (type === 'json') {
       finalContent = JSON.stringify(parsed, null, 2);
       blob = new Blob([finalContent], { type: 'application/json' });
-    } catch (e) {
-      console.error("Error converting to JSON", e);
-      return;
+    } else {
+      finalContent = yaml.dump(parsed);
+      blob = new Blob([finalContent], { type: 'application/x-yaml' });
     }
-  } else {
-    blob = new Blob([content], { type: 'application/x-yaml' });
+  } catch (e) {
+    console.error(`Error converting to ${type}`, e);
+    // If conversion fails, download the raw content
+    const mimeType = type === 'json' ? 'application/json' : 'application/x-yaml';
+    blob = new Blob([content], { type: mimeType });
   }
 
   const url = URL.createObjectURL(blob);
@@ -122,4 +131,28 @@ export function downloadFile(content: string, filename: string, type: 'yaml' | '
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export async function convertSpec(spec: string, targetFormat: EditorFormat): Promise<string> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        const parsed = yaml.load(spec);
+        if (typeof parsed !== 'object' || parsed === null) {
+          // Not a valid object, return as-is
+          resolve(spec);
+          return;
+        }
+
+        if (targetFormat === 'json') {
+          resolve(JSON.stringify(parsed, null, 2));
+        } else {
+          resolve(yaml.dump(parsed));
+        }
+      } catch (e: any) {
+        console.error("Conversion error:", e);
+        reject(new Error("Failed to convert the specification. The content may be invalid."));
+      }
+    }, 10); // Use a small timeout to unblock the UI thread
+  });
 }

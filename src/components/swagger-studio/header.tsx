@@ -1,9 +1,10 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
-import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2, AlertTriangle, Network } from "lucide-react";
+import { FileDown, FileUp, FolderOpen, Moon, Save, Sun, FilePlus2, Code, BookOpen, SquareTerminal, Wand2, AlertTriangle, Network, Trash2, Notebook, GitCompareArrows, FileSpreadsheet } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { formatSpec, downloadFile } from "@/lib/swagger-utils";
@@ -20,10 +21,11 @@ import { Input } from "@/components/ui/input";
 import { useState, useRef } from "react";
 import { Label } from "../ui/label";
 import { Project } from '@/lib/store';
+import * as yaml from 'js-yaml';
 
 export function SwaggerStudioHeader() {
   const { theme, setTheme } = useTheme();
-  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, setPreviewType, setDirty, isDirty, toggleValidationPanel, isValidationPanelOpen } = useStore();
+  const { spec, setSpec, projects, setProjects, currentProjectId, setCurrentProjectId, previewType, setPreviewType, setDirty, isDirty, toggleValidationPanel, isValidationPanelOpen, editorFormat, isNotesPanelOpen, toggleNotesPanel } = useStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,9 +86,26 @@ export function SwaggerStudioHeader() {
     toast({ title: "New Project" });
   };
 
+  const handleDeleteProject = (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    const projectToDelete = projects.find(p => p.id === projectId);
+    if (!projectToDelete) return;
+
+    const updatedProjects = projects.filter(p => p.id !== projectId);
+    setProjects(updatedProjects);
+    localStorage.setItem('swagger-studio-projects', JSON.stringify(updatedProjects));
+    
+    if (currentProjectId === projectId) {
+      handleNewProject();
+      toast({ title: "Project Deleted", description: `"${projectToDelete.name}" was deleted. Editor reset.` });
+    } else {
+      toast({ title: "Project Deleted", description: `"${projectToDelete.name}" has been deleted.` });
+    }
+  };
+
   const handleFormat = async () => {
     try {
-      const formatted = await formatSpec(spec);
+      const formatted = await formatSpec(spec, editorFormat);
       setSpec(formatted);
       toast({ title: "Formatted", description: "The content has been formatted." });
     } catch (e: any) {
@@ -107,6 +126,16 @@ export function SwaggerStudioHeader() {
       reader.readAsText(file);
     }
   };
+
+  const handleExport = (format: 'yaml' | 'json') => {
+    try {
+      const parsed = yaml.load(spec);
+      const contentToDownload = format === 'yaml' ? yaml.dump(parsed) : JSON.stringify(parsed, null, 2);
+      downloadFile(contentToDownload, `spec.${format}`, format);
+    } catch(e: any) {
+      toast({ variant: 'destructive', title: "Export Failed", description: "Could not parse content to export." });
+    }
+  }
 
   return (
     <>
@@ -136,8 +165,8 @@ export function SwaggerStudioHeader() {
             <DropdownMenuContent>
               <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}><FileUp className="mr-2"/>Import File...</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => downloadFile(spec, 'spec.yaml', 'yaml')}><FileDown className="mr-2"/>Export as YAML</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => downloadFile(spec, 'spec.json', 'json')}><FileDown className="mr-2"/>Export as JSON</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('yaml')}><FileDown className="mr-2"/>Export as YAML</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('json')}><FileDown className="mr-2"/>Export as JSON</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -162,10 +191,17 @@ export function SwaggerStudioHeader() {
            <Button variant="ghost" size="icon" onClick={() => setPreviewType('erd')} title="ERD Diagram" className={previewType === 'erd' ? 'bg-muted' : ''}>
             <Network />
           </Button>
+          <Button variant="ghost" size="icon" onClick={() => setPreviewType('compare')} title="Compare Specs" className={previewType === 'compare' ? 'bg-muted' : ''}>
+            <GitCompareArrows />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setPreviewType('excel')} title="Excel Reader" className={previewType === 'excel' ? 'bg-muted' : ''}>
+            <FileSpreadsheet />
+          </Button>
 
           <div className="w-px h-6 bg-border mx-2" />
 
           <Button variant={isValidationPanelOpen ? "secondary" : "ghost"} onClick={toggleValidationPanel} title="Toggle Validation Panel"><AlertTriangle className="h-4 w-4"/></Button>
+          <Button variant={isNotesPanelOpen ? "secondary" : "ghost"} onClick={toggleNotesPanel} title="Toggle Notes Panel"><Notebook className="h-4 w-4"/></Button>
 
           <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title="Toggle Theme">
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -205,9 +241,14 @@ export function SwaggerStudioHeader() {
           <div className="py-4 max-h-96 overflow-y-auto">
             {projects.length > 0 ? (
               projects.map(p => (
-                <div key={p.id} onClick={() => handleOpenProject(p)} className="p-2 rounded-md hover:bg-accent cursor-pointer">
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="text-sm text-muted-foreground">Last updated: {new Date(p.updatedAt).toLocaleString()}</p>
+                <div key={p.id} onClick={() => handleOpenProject(p)} className="flex justify-between items-center p-2 rounded-md hover:bg-accent cursor-pointer group">
+                  <div>
+                    <p className="font-semibold">{p.name}</p>
+                    <p className="text-sm text-muted-foreground">Last updated: {new Date(p.updatedAt).toLocaleString()}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={(e) => handleDeleteProject(e, p.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               ))
             ) : (

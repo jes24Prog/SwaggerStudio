@@ -1,8 +1,9 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  serverExternalPackages: ['swagger-client', 'dagre'],
+  serverExternalPackages: ['swagger-client', 'dagre', 'redoc', 'swagger-ui-react'],
   typescript: {
     ignoreBuildErrors: true,
   },

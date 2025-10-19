@@ -7,15 +7,18 @@ import { SwaggerStudioHeader } from '@/components/swagger-studio/header';
 import { EditorPanel } from '@/components/swagger-studio/editor-panel';
 import { PreviewPanel } from '@/components/swagger-studio/preview-panel';
 import { ErdPanel } from '@/components/swagger-studio/erd-panel';
-import { useStore, Project } from '@/lib/store';
+import { ComparePanel } from '@/components/swagger-studio/compare-panel';
+import { ExcelReaderPanel } from '@/components/swagger-studio/excel-reader-panel';
+import { useStore, Project, Notes } from '@/lib/store';
 import { Toaster } from '@/components/ui/toaster';
 import { DEFAULT_SPEC } from '@/lib/templates';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Code, Network } from 'lucide-react';
+import { BookOpen, Code, FileSpreadsheet, GitCompareArrows, Network } from 'lucide-react';
+import { convertSpec, EditorFormat } from '@/lib/swagger-utils';
 
 export default function SwaggerStudioPage() {
-  const { setSpec, setProjects, setCurrentProjectId, setDirty, previewType } = useStore();
+  const { setSpec, setProjects, setCurrentProjectId, setDirty, previewType, setEditorFormat, setNotes } = useStore();
   const [isClient, setIsClient] = useState(false);
   const isMobile = useIsMobile();
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
@@ -24,22 +27,35 @@ export default function SwaggerStudioPage() {
     setIsClient(true);
     // Load projects from localStorage
     const savedProjects = localStorage.getItem('swagger-studio-projects');
+    const savedFormat = localStorage.getItem('swagger-studio-format') as EditorFormat | null;
+    const savedNotes = localStorage.getItem('swagger-studio-notes');
+
+    if (savedFormat) {
+      setEditorFormat(savedFormat);
+    }
+    
     if (savedProjects) {
       const projects: Project[] = JSON.parse(savedProjects);
       setProjects(projects);
       const lastOpenedId = localStorage.getItem('swagger-studio-last-opened');
       const projectToLoad = projects.find(p => p.id === lastOpenedId) || (projects.length > 0 ? projects[0] : null);
       if (projectToLoad) {
-        setSpec(projectToLoad.content);
+        convertSpec(projectToLoad.content, savedFormat || 'yaml').then(content => setSpec(content));
         setCurrentProjectId(projectToLoad.id);
       } else {
-        setSpec(DEFAULT_SPEC);
+        convertSpec(DEFAULT_SPEC, savedFormat || 'yaml').then(content => setSpec(content));
       }
     } else {
-      setSpec(DEFAULT_SPEC);
+      convertSpec(DEFAULT_SPEC, savedFormat || 'yaml').then(content => setSpec(content));
     }
+
+    if (savedNotes) {
+      const notes: Notes = JSON.parse(savedNotes);
+      setNotes(notes);
+    }
+
     setDirty(false);
-  }, [setSpec, setProjects, setCurrentProjectId, setDirty]);
+  }, [setSpec, setProjects, setCurrentProjectId, setDirty, setEditorFormat, setNotes]);
 
   if (!isClient) {
     return (
@@ -53,6 +69,10 @@ export default function SwaggerStudioPage() {
     switch(previewType) {
       case 'erd':
         return <ErdPanel />;
+      case 'compare':
+        return <ComparePanel />;
+      case 'excel':
+        return <ExcelReaderPanel />;
       default:
         return <PreviewPanel />;
     }
@@ -62,6 +82,10 @@ export default function SwaggerStudioPage() {
     switch(previewType) {
       case 'erd':
         return mobileView === 'editor' ? <Network /> : <Code />;
+      case 'compare':
+        return mobileView === 'editor' ? <GitCompareArrows /> : <Code />;
+      case 'excel':
+        return mobileView === 'editor' ? <FileSpreadsheet /> : <Code />;
       case 'redoc':
          return mobileView === 'editor' ? <BookOpen /> : <Code />;
       default:
@@ -96,6 +120,10 @@ export default function SwaggerStudioPage() {
     switch (previewType) {
       case 'erd':
         return <ErdPanel />;
+      case 'compare':
+        return <ComparePanel />;
+      case 'excel':
+        return <ExcelReaderPanel />;
       case 'redoc':
         return (
           <div className="h-full overflow-auto">
@@ -107,7 +135,7 @@ export default function SwaggerStudioPage() {
         return (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={50} minSize={25}>
-              <div className="h-full overflow-auto">
+              <div className="h-full overflow-auto flex flex-col">
                 <EditorPanel />
               </div>
             </ResizablePanel>

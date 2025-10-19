@@ -71,7 +71,7 @@ function getPathFromPosition(content: string, position: monaco.Position): string
 
 
 export function EditorComponent() {
-  const { spec, setSpec, setParsedSpec, setValidationErrors, setMissingSchemas } = useStore();
+  const { spec, setSpec, setParsedSpec, setValidationErrors, setMissingSchemas, editorFormat } = useStore();
   const { theme } = useTheme();
   const monacoInstance = useMonaco();
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -167,7 +167,7 @@ export function EditorComponent() {
         parent[key] = { $ref: refPath };
 
         const newSpec = yaml.dump(parsed);
-        const formatted = await formatSpec(newSpec);
+        const formatted = await formatSpec(newSpec, editorFormat);
         setSpec(formatted);
         toast({ title: 'Schema Extracted', description: `Created "${schemaName}" and updated the reference.` });
     } catch (e: any) {
@@ -251,10 +251,10 @@ export function EditorComponent() {
 
   return (
     <>
-    <div className="h-full w-full font-code">
+    <div className="h-full w-full font-code flex-1">
       <Editor
         height="100%"
-        language="yaml"
+        language={editorFormat}
         value={spec}
         onChange={(value) => setSpec(value || '')}
         onMount={handleEditorDidMount}

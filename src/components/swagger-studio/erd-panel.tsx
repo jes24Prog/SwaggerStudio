@@ -5,7 +5,7 @@ import * as React from "react";
 import { useStore } from "@/lib/store";
 import { Loader2, Wand2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
-import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, Handle, Position, type Node, type Edge } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, Handle, Position, type Node, type Edge, EdgeLabelRenderer, getBezierPath } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { get, set } from 'lodash';
 import { useToast } from "@/hooks/use-toast";
 import { InputDialog } from "./input-dialog";
 import { formatSpec } from "@/lib/swagger-utils";
+import { cn } from "@/lib/utils";
 
 
 const dagreGraph = new dagre.graphlib.Graph();
@@ -34,9 +35,9 @@ function SchemaNode({ data }: { data: { label: string, properties: any, isMissin
   };
 
   return (
-    <Card className={data.isMissing ? "border-red-500" : ""}>
-      <CardHeader className="p-2 border-b">
-        <CardTitle className={data.isMissing ? "text-red-500 text-base" : "text-base"}>
+    <Card className={cn("react-flow__node-schema", data.isMissing ? "border-destructive" : "border-border")}>
+       <CardHeader className={cn("p-2 border-b", data.isMissing ? "bg-destructive/10" : "bg-muted")}>
+        <CardTitle className={cn("text-base font-semibold", data.isMissing ? "text-destructive" : "text-foreground")}>
           {data.isMissing && '⚠️ '}
           {data.label}
         </CardTitle>
@@ -47,7 +48,7 @@ function SchemaNode({ data }: { data: { label: string, properties: any, isMissin
             {Object.entries(properties).map(([propName, propDetails]: [string, any]) => (
               <div key={propName} className="flex justify-between items-center group">
                 <div>
-                  <span>{propName}</span>
+                  <span className="font-medium">{propName}</span>
                   <span className="text-muted-foreground ml-2">{propDetails.$ref ? propDetails.$ref.split('/').pop() : (propDetails.type || 'any')}{propDetails.format ? `(${propDetails.format})` : ''}</span>
                 </div>
                 {propDetails.type === 'object' && propDetails.properties && !propDetails.$ref && (
@@ -62,23 +63,60 @@ function SchemaNode({ data }: { data: { label: string, properties: any, isMissin
           <p className="text-muted-foreground italic">No properties defined.</p>
         )}
       </CardContent>
-      <Handle type="target" position={Position.Top} className="!bg-primary" />
-      <Handle type="source" position={Position.Bottom} className="!bg-primary" />
+      <Handle type="target" position={Position.Left} className="!bg-primary" />
+      <Handle type="source" position={Position.Right} className="!bg-primary" />
     </Card>
   );
 }
 
+function CustomEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd }: Edge) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
 
+  return (
+    <>
+      <path id={id} style={data.style} className="react-flow__edge-path" d={edgePath} markerEnd={markerEnd} />
+      {data.label && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              fontSize: 10,
+              fontWeight: 500,
+              padding: '2px 5px',
+              background: data.style.stroke || 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+              borderRadius: '4px',
+              pointerEvents: 'all'
+            }}
+            className="nodrag nopan"
+          >
+            {data.label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
 
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
-  dagreGraph.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 50 });
+  dagreGraph.setGraph({ rankdir: 'LR', ranksep: 100, nodesep: 50 });
 
   nodes.forEach((node) => {
-     // Estimate node height based on properties
-    const numProperties = node.data.properties ? Object.keys(node.data.properties).length : 1;
-    const estimatedHeight = 60 + numProperties * 25; // increased space per prop
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: Math.max(nodeHeight, estimatedHeight) });
+    let height = nodeHeight;
+    if (node.type === 'schema') {
+       const numProperties = node.data.properties ? Object.keys(node.data.properties).length : 1;
+       height = 60 + numProperties * 25;
+    }
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: Math.max(150, height) });
   });
 
   edges.forEach((edge) => {
@@ -89,8 +127,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
 
   nodes.forEach((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = 'top';
-    node.sourcePosition = 'bottom';
+    node.targetPosition = 'left';
+    node.sourcePosition = 'right';
 
     node.position = {
       x: nodeWithPosition.x - nodeWidth / 2,
@@ -152,86 +190,110 @@ function LayoutFlow() {
   };
   
   const nodeTypes = React.useMemo(() => ({ 
-    schema: (props: any) => <SchemaNode {...props} data={{...props.data, onExtract: handleExtractRequest }} /> 
+    schema: (props: any) => <SchemaNode {...props} data={{...props.data, onExtract: handleExtractRequest }} />
   }), [handleExtractRequest]);
 
+  const edgeTypes = React.useMemo(() => ({ custom: CustomEdge }), []);
+
   const generateErdData = useCallback((specObj: any, missing: { schema: string }[]): { nodes: Node[], edges: Edge[] } => {
-    const schemas = specObj?.components?.schemas || specObj?.definitions;
-    if (!schemas) {
-      return { nodes: [], edges: [] };
-    }
-  
+    if (!specObj) return { nodes: [], edges: [] };
+    
+    const schemas = specObj?.components?.schemas || specObj?.definitions || {};
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
     const missingSchemaSet = new Set(missing.map(s => s.schema));
-  
-    const nodes: Node[] = Object.keys(schemas).map(name => ({
-      id: name,
-      type: 'schema',
-      position: { x: 0, y: 0 },
-      data: { 
-        label: name,
-        properties: schemas[name]?.properties,
-      },
-       style: {
-        width: nodeWidth,
-        padding: 0,
-        border: 'none',
-        background: 'transparent',
-      }
-    }));
-  
+    const refPrefixOAS3 = '#/components/schemas/';
+    const refPrefixOAS2 = '#/definitions/';
+
+    const getRefName = ($ref: string) => {
+      if ($ref.startsWith(refPrefixOAS3)) return $ref.substring(refPrefixOAS3.length);
+      if ($ref.startsWith(refPrefixOAS2)) return $ref.substring(refPrefixOAS2.length);
+      return null;
+    }
+
+    // Add Schema nodes
+    Object.keys(schemas).forEach(name => {
+      nodes.push({
+        id: name,
+        type: 'schema',
+        position: { x: 0, y: 0 },
+        data: { 
+          label: name,
+          properties: schemas[name]?.properties,
+        },
+      });
+    });
+
+    // Add Missing Schema nodes
     missingSchemaSet.forEach(name => {
       if (!nodes.find(n => n.id === name)) {
         nodes.push({
           id: name,
           type: 'schema',
           position: { x: 0, y: 0 },
-          data: { 
-            label: name,
-            properties: {},
-            isMissing: true,
-          },
-          style: {
-            width: nodeWidth,
-            padding: 0,
-            border: 'none',
-            background: 'transparent',
-          }
-        })
+          data: { label: name, properties: {}, isMissing: true },
+        });
       }
-    })
+    });
   
-    const edges: Edge[] = [];
-    const refPrefixOAS3 = '#/components/schemas/';
-    const refPrefixOAS2 = '#/definitions/';
-  
-    const findRefs = (obj: any, sourceName: string) => {
+    // Connect schemas to other schemas
+    const compositionTypes = ['allOf', 'oneOf', 'anyOf'];
+    const findSchemaRefs = (obj: any, sourceName: string) => {
       if (!obj || typeof obj !== 'object') return;
   
       if (obj.$ref && typeof obj.$ref === 'string') {
-         let targetName: string | null = null;
-        if (obj.$ref.startsWith(refPrefixOAS3)) {
-          targetName = obj.$ref.substring(refPrefixOAS3.length);
-        } else if (obj.$ref.startsWith(refPrefixOAS2)) {
-           targetName = obj.$ref.substring(refPrefixOAS2.length);
-        }
-        
-        if (targetName) {
+        const targetName = getRefName(obj.$ref);
+        if (targetName && !compositionTypes.some(ct => obj[ct])) {
           edges.push({
             id: `e-${sourceName}-${targetName}-${Math.random()}`,
             source: sourceName,
             target: targetName,
-            animated: true,
+            type: 'custom',
+            data: { style: { stroke: 'hsl(var(--chart-1))', strokeWidth: 2 }},
+            markerEnd: { type: 'arrowclosed', color: 'hsl(var(--chart-1))' },
           });
         }
       }
   
-      for (const value of Object.values(obj)) {
-        findRefs(value, sourceName);
+      for (const [key, value] of Object.entries(obj)) {
+        if (compositionTypes.includes(key) && Array.isArray(value)) {
+            const colors: { [key: string]: string } = {
+                allOf: 'hsl(var(--chart-2))', // green
+                oneOf: 'hsl(var(--chart-4))', // orange
+                anyOf: 'hsl(var(--chart-5))', // purple
+            }
+            const dashStyles: { [key: string]: string } = {
+                allOf: '',
+                oneOf: '5,5',
+                anyOf: '10,10',
+            }
+
+            value.forEach(item => {
+                if(item.$ref) {
+                    const targetName = getRefName(item.$ref);
+                    if (targetName) {
+                         edges.push({
+                            id: `e-${sourceName}-${targetName}-${key}-${Math.random()}`,
+                            source: sourceName,
+                            target: targetName,
+                            type: 'custom',
+                            data: { 
+                              label: key,
+                              style: { stroke: colors[key], strokeDasharray: dashStyles[key], strokeWidth: 2 }
+                            },
+                            markerEnd: { type: 'arrowclosed', color: colors[key] },
+                        });
+                    }
+                }
+            })
+        } else {
+             findSchemaRefs(value, sourceName);
+        }
       }
     };
   
     Object.keys(schemas).forEach(name => {
-      findRefs(schemas[name], name);
+      findSchemaRefs(schemas[name], name);
     });
   
     return { nodes, edges };
@@ -240,15 +302,20 @@ function LayoutFlow() {
   useEffect(() => {
     if (!parsedSpec) return;
     const { nodes: initialNodes, edges: initialEdges } = generateErdData(parsedSpec, missingSchemas);
+    if (initialNodes.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
   }, [parsedSpec, missingSchemas, setNodes, setEdges, generateErdData]);
   
   const handleNodeClick = (_: any, node: Node) => {
-    if (typeof (window as any).goToMonacoLine === 'function' && !node.data.isMissing) {
-      const path = (parsedSpec as any)?.components?.schemas ? `/components/schemas/${node.id}` : `/definitions/${node.id}`;
-      (window as any).goToMonacoLine(path);
+    if (typeof (window as any).goToMonacoLine === 'function' && !node.data.isMissing && node.type === 'schema') {
+        const path = (parsedSpec as any)?.components?.schemas ? `/components/schemas/${node.id}` : `/definitions/${node.id}`;
+        (window as any).goToMonacoLine(path);
     }
   };
 
@@ -262,10 +329,11 @@ function LayoutFlow() {
         onNodeClick={handleNodeClick}
         fitView
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
       >
         <Controls />
         <MiniMap />
-        <Background gap={12} size={1} />
+        <Background gap={16} size={1} />
       </ReactFlow>
       <InputDialog
         isOpen={isExtractDialogOpen}
@@ -288,7 +356,7 @@ export function ErdPanel() {
     setIsMounted(true);
   }, []);
 
-  const hasSchemas = parsedSpec && ((parsedSpec as any).components?.schemas || (parsedSpec as any).definitions);
+  const hasContent = parsedSpec && ((parsedSpec as any).components?.schemas || (parsedSpec as any).definitions);
 
   if (!isMounted) {
     return (
@@ -298,12 +366,12 @@ export function ErdPanel() {
     );
   }
 
-  if (!hasSchemas) {
+  if (!hasContent) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-muted/50 p-8">
         <div className="text-center text-muted-foreground">
-          <h3 className="text-lg font-semibold text-foreground">No Schemas Found</h3>
-          <p>Define some schemas under `components/schemas` or `definitions` to see the diagram.</p>
+          <h3 className="text-lg font-semibold text-foreground">No Schemas to Display</h3>
+          <p>Define some schemas in `components/schemas` to see the diagram.</p>
         </div>
       </div>
     );
@@ -317,3 +385,5 @@ export function ErdPanel() {
     </div>
   );
 }
+
+    
