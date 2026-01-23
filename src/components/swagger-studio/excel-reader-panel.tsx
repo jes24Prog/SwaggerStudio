@@ -20,9 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, X, FileSpreadsheet, Download } from 'lucide-react';
+import { UploadCloud, X, FileSpreadsheet, Download, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { downloadFile } from '@/lib/swagger-utils';
@@ -38,6 +37,7 @@ export function ExcelReaderPanel() {
   const [currentSheet, setCurrentSheet] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const { toast } = useToast();
+  const [zoom, setZoom] = useState(1);
 
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -97,6 +97,7 @@ export function ExcelReaderPanel() {
     setSheetNames([]);
     setCurrentSheet('');
     setFileName('');
+    setZoom(1);
   };
 
   const handleDownloadJson = () => {
@@ -137,6 +138,16 @@ export function ExcelReaderPanel() {
               )}
             </div>
             <div className='flex items-center gap-2'>
+               <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setZoom(1)} disabled={zoom === 1} className="w-16">
+                {`${Math.round(zoom * 100)}%`}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.min(2, z + 0.1))} title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+
               <Button variant="outline" size="sm" onClick={handleDownloadJson}>
                 <Download className="mr-2 h-4 w-4" />
                 Download JSON
@@ -146,8 +157,8 @@ export function ExcelReaderPanel() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
+          <CardContent className="p-0 flex-1 overflow-auto">
+            <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: '100%', height: '100%' }}>
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
@@ -166,7 +177,7 @@ export function ExcelReaderPanel() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -182,3 +193,5 @@ export function ExcelReaderPanel() {
     </div>
   );
 }
+
+    
