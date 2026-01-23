@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { UploadCloud, X, FileSpreadsheet, Download, ZoomIn, ZoomOut, Shrink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +39,8 @@ export function ExcelReaderPanel() {
   const [fileName, setFileName] = useState<string>('');
   const { toast } = useToast();
   const [zoom, setZoom] = useState(1);
-  const [fitCells, setFitCells] = useState(false);
+  const [isWrapEnabled, setIsWrapEnabled] = useState(true);
+  const [cellWidth, setCellWidth] = useState('');
 
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -99,7 +101,8 @@ export function ExcelReaderPanel() {
     setCurrentSheet('');
     setFileName('');
     setZoom(1);
-    setFitCells(false);
+    setIsWrapEnabled(true);
+    setCellWidth('');
   };
 
   const handleDownloadJson = () => {
@@ -115,7 +118,17 @@ export function ExcelReaderPanel() {
     const content = JSON.stringify(jsonData, null, 2);
     downloadFile(content, `${fileName.replace(/\.[^/.]+$/, "")}_${currentSheet}.json`, 'json');
   }
+  
+  const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCellWidth(value);
+    if (value && parseInt(value, 10) > 0 && !isWrapEnabled) {
+      setIsWrapEnabled(true);
+    }
+  };
 
+  const widthValue = parseInt(cellWidth, 10);
+  const hasCustomWidth = !isNaN(widthValue) && widthValue > 0;
   const hasContent = sheetNames.length > 0;
 
   return (
@@ -150,10 +163,25 @@ export function ExcelReaderPanel() {
                 <ZoomIn className="h-4 w-4" />
               </Button>
 
-              <Button variant={fitCells ? "secondary" : "outline"} size="sm" onClick={() => setFitCells(!fitCells)} title={fitCells ? "Enable cell text wrapping" : "Disable cell text wrapping and expand columns"}>
+              <Button variant={isWrapEnabled ? "secondary" : "outline"} size="sm" onClick={() => {
+                  const newWrapState = !isWrapEnabled;
+                  setIsWrapEnabled(newWrapState);
+                  if (!newWrapState) { // If turning wrap off, clear custom width
+                    setCellWidth('');
+                  }
+              }} title={isWrapEnabled ? "Disable text wrapping" : "Enable text wrapping"}>
                 <Shrink className="mr-2 h-4 w-4" />
-                {fitCells ? 'Wrap Cells' : 'Fit Cells'}
+                {isWrapEnabled ? 'Wrap On' : 'Wrap Off'}
               </Button>
+
+              <Input
+                type="number"
+                placeholder="Cell width (px)"
+                className="h-9 w-36"
+                value={cellWidth}
+                onChange={handleWidthChange}
+                min="20"
+              />
 
               <Button variant="outline" size="sm" onClick={handleDownloadJson}>
                 <Download className="mr-2 h-4 w-4" />
@@ -164,26 +192,45 @@ export function ExcelReaderPanel() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-auto">
-            <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: '100%', height: '100%' }}>
-              <Table className={cn(fitCells && "table-auto")}>
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    {sheets[currentSheet]?.headers.map((header, i) => (
-                      <TableHead key={`${header}-${i}`} className={cn(fitCells && "whitespace-nowrap")}>{header}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sheets[currentSheet]?.rows.map((row, i) => (
-                    <TableRow key={`row-${i}`}>
-                      {row.map((cell, j) => (
-                        <TableCell key={`cell-${i}-${j}`} className={cn(fitCells && "whitespace-nowrap")}>{String(cell ?? '')}</TableCell>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <div className="w-full h-full overflow-auto">
+              <div style={{ width: 'fit-content', minWidth: '100%', transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+                <Table className={cn(
+                    (isWrapEnabled || hasCustomWidth) && 'table-fixed',
+                    (isWrapEnabled && !hasCustomWidth) && 'w-full'
+                  )}>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      {sheets[currentSheet]?.headers.map((header, i) => (
+                        <TableHead 
+                          key={`${header}-${i}`}
+                          className={cn(!isWrapEnabled && !hasCustomWidth && "whitespace-nowrap")}
+                          style={hasCustomWidth ? {width: `${widthValue}px`} : {}}
+                        >
+                          {header}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {sheets[currentSheet]?.rows.map((row, i) => (
+                      <TableRow key={`row-${i}`}>
+                        {row.map((cell, j) => (
+                          <TableCell 
+                            key={`cell-${i}-${j}`} 
+                            className={cn(
+                              !isWrapEnabled && !hasCustomWidth && "whitespace-nowrap",
+                              (isWrapEnabled || hasCustomWidth) && "break-words"
+                            )}
+                          >
+                            {String(cell ?? '')}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>
