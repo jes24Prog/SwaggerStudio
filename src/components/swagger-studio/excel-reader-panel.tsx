@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
-import { UploadCloud, X, FileSpreadsheet, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import { UploadCloud, X, FileSpreadsheet, Download, ZoomIn, ZoomOut, Shrink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { downloadFile } from '@/lib/swagger-utils';
@@ -38,6 +38,7 @@ export function ExcelReaderPanel() {
   const [fileName, setFileName] = useState<string>('');
   const { toast } = useToast();
   const [zoom, setZoom] = useState(1);
+  const [fitCells, setFitCells] = useState(false);
 
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -98,6 +99,7 @@ export function ExcelReaderPanel() {
     setCurrentSheet('');
     setFileName('');
     setZoom(1);
+    setFitCells(false);
   };
 
   const handleDownloadJson = () => {
@@ -148,6 +150,11 @@ export function ExcelReaderPanel() {
                 <ZoomIn className="h-4 w-4" />
               </Button>
 
+              <Button variant={fitCells ? "secondary" : "outline"} size="sm" onClick={() => setFitCells(!fitCells)} title={fitCells ? "Enable cell text wrapping" : "Disable cell text wrapping and expand columns"}>
+                <Shrink className="mr-2 h-4 w-4" />
+                {fitCells ? 'Wrap Cells' : 'Fit Cells'}
+              </Button>
+
               <Button variant="outline" size="sm" onClick={handleDownloadJson}>
                 <Download className="mr-2 h-4 w-4" />
                 Download JSON
@@ -159,11 +166,11 @@ export function ExcelReaderPanel() {
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-auto">
             <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: '100%', height: '100%' }}>
-              <Table>
+              <Table className={cn(fitCells && "table-auto")}>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     {sheets[currentSheet]?.headers.map((header, i) => (
-                      <TableHead key={`${header}-${i}`}>{header}</TableHead>
+                      <TableHead key={`${header}-${i}`} className={cn(fitCells && "whitespace-nowrap")}>{header}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -171,7 +178,7 @@ export function ExcelReaderPanel() {
                   {sheets[currentSheet]?.rows.map((row, i) => (
                     <TableRow key={`row-${i}`}>
                       {row.map((cell, j) => (
-                        <TableCell key={`cell-${i}-${j}`}>{String(cell ?? '')}</TableCell>
+                        <TableCell key={`cell-${i}-${j}`} className={cn(fitCells && "whitespace-nowrap")}>{String(cell ?? '')}</TableCell>
                       ))}
                     </TableRow>
                   ))}
@@ -193,5 +200,3 @@ export function ExcelReaderPanel() {
     </div>
   );
 }
-
-    
